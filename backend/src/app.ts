@@ -366,6 +366,32 @@ async function initializeServer(): Promise<{ app: express.Application; server: a
     // Инициализация сервисов
     if (dbConnected) {
       try {
+        // Подписка на события диалера для отправки через WebSocket (ДО запуска диалера!)
+        dialerService.on('campaign:started', (data) => {
+          logger.info(`📡 Broadcasting campaign started: ${data.campaignId}`);
+          io.emit('campaign_updated', {
+            campaignId: data.campaignId,
+            status: 'active',
+            campaign: data.campaign
+          });
+        });
+
+        dialerService.on('campaign:stopped', (data) => {
+          logger.info(`📡 Broadcasting campaign stopped: ${data.campaignId}`);
+          io.emit('campaign_updated', {
+            campaignId: data.campaignId,
+            status: 'cancelled'
+          });
+        });
+
+        dialerService.on('campaign:paused', (data) => {
+          logger.info(`📡 Broadcasting campaign paused: ${data.campaignId}`);
+          io.emit('campaign_updated', {
+            campaignId: data.campaignId,
+            status: 'paused'
+          });
+        });
+
         // Запуск диалера
         await dialerService.start();
         logger.info('✅ Dialer service started');

@@ -20,7 +20,7 @@ const router = createRouter({
       component: () => import('../views/HomeView.vue'),
       meta: {
         title: 'Дашборд',
-        requiresAuth: false
+        requiresAuth: true // Изменено с false на true
       }
     },
     {
@@ -30,7 +30,7 @@ const router = createRouter({
       component: () => import('../views/CampaignsView.vue'),
       meta: {
         title: 'Кампании',
-        requiresAuth: false,
+        requiresAuth: true, // Изменено с false на true
         requiredPermissions: ['campaigns_view']
       }
     },
@@ -51,7 +51,7 @@ const router = createRouter({
       component: () => import('../views/ContactsView.vue'),
       meta: {
         title: 'Контакты',
-        requiresAuth: false,
+        requiresAuth: true, // Изменено с false на true
         requiredPermissions: ['contacts_view']
       }
     },
@@ -81,7 +81,8 @@ const router = createRouter({
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),
       meta: {
-        title: 'Страница не найдена'
+        title: 'Страница не найдена',
+        requiresAuth: true // Добавлено требование авторизации
       }
     }
   ]

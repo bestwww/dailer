@@ -101,8 +101,9 @@ class ApiService {
   private api: AxiosInstance
 
   constructor() {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
     this.api = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+      baseURL: `${baseUrl}/api`,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json'
@@ -170,7 +171,7 @@ class ApiService {
 
   // Методы для работы с кампаниями
   async getCampaigns(params?: PaginatedRequest): Promise<PaginatedResponse<Campaign>> {
-    const response = await this.api.get('/api/campaigns', { params })
+    const response = await this.api.get('/campaigns', { params })
     return response.data
   }
 
@@ -180,7 +181,7 @@ class ApiService {
   }
 
   async createCampaign(data: Partial<Campaign>): Promise<Campaign> {
-    const response = await this.api.post('/api/campaigns', data)
+    const response = await this.api.post('/campaigns', data)
     return response.data.data
   }
 
@@ -195,24 +196,24 @@ class ApiService {
     await this.api.delete(`/campaigns/${id}`)
   }
 
-  async startCampaign(id: number): Promise<ApiResponse> {
+  async startCampaign(id: number): Promise<ApiResponse<Campaign>> {
     const response = await this.api.post(`/campaigns/${id}/start`)
     return response.data
   }
 
-  async pauseCampaign(id: number): Promise<ApiResponse> {
+  async pauseCampaign(id: number): Promise<ApiResponse<Campaign>> {
     const response = await this.api.post(`/campaigns/${id}/pause`)
     return response.data
   }
 
-  async stopCampaign(id: number): Promise<ApiResponse> {
+  async stopCampaign(id: number): Promise<ApiResponse<Campaign>> {
     const response = await this.api.post(`/campaigns/${id}/stop`)
     return response.data
   }
 
   // Методы для работы с контактами
   async getContacts(campaignId?: number, params?: PaginatedRequest): Promise<PaginatedResponse<Contact>> {
-    const response = await this.api.get('/api/contacts', {
+    const response = await this.api.get('/contacts', {
       params: { campaignId, ...params }
     })
     return response.data
@@ -224,7 +225,7 @@ class ApiService {
   }
 
   async createContact(data: CreateContactRequest): Promise<Contact> {
-    const response = await this.api.post('/api/contacts', data)
+    const response = await this.api.post('/contacts', data)
     return response.data.data
   }
 
@@ -238,7 +239,7 @@ class ApiService {
   }
 
   async importContacts(campaignId: number, contacts: CreateContactRequest[]): Promise<ApiResponse> {
-    const response = await this.api.post('/api/contacts/import', {
+    const response = await this.api.post('/contacts/import', {
       campaignId,
       contacts
     })
@@ -259,7 +260,7 @@ class ApiService {
 
   // Методы для работы с результатами звонков
   async getCallResults(campaignId?: number, params?: PaginatedRequest): Promise<PaginatedResponse<CallResult>> {
-    const response = await this.api.get('/api/call-results', {
+    const response = await this.api.get('/call-results', {
       params: { campaignId, ...params }
     })
     return response.data
@@ -277,18 +278,18 @@ class ApiService {
   }
 
   async getSystemStats(): Promise<any> {
-    const response = await this.api.get('/api/stats/system')
+    const response = await this.api.get('/stats/system')
     return response.data.data
   }
 
   // Настройки
   async getSettings(): Promise<SystemSettings> {
-    const response = await this.api.get('/api/settings')
+    const response = await this.api.get('/settings')
     return response.data.data
   }
 
   async updateSettings(data: Partial<SystemSettings>): Promise<SystemSettings> {
-    const response = await this.api.put('/api/settings', data)
+    const response = await this.api.put('/settings', data)
     return response.data.data
   }
 
@@ -337,17 +338,17 @@ class ApiService {
 
   // Bitrix24 методы
   async getBitrixStatus(): Promise<ApiResponse> {
-    const response = await this.api.get('/api/bitrix/status')
+    const response = await this.api.get('/bitrix/status')
     return response.data
   }
 
   async testBitrixConnection(): Promise<ApiResponse> {
-    const response = await this.api.post('/api/bitrix/test-connection')
+    const response = await this.api.post('/bitrix/test-connection')
     return response.data
   }
 
   async getBitrixAuthUrl(state?: string): Promise<ApiResponse> {
-    const response = await this.api.get('/api/bitrix/auth', { params: { state } })
+    const response = await this.api.get('/bitrix/auth', { params: { state } })
     return response.data
   }
 
@@ -357,12 +358,12 @@ class ApiService {
     clientSecret: string
     redirectUri: string
   }): Promise<ApiResponse> {
-    const response = await this.api.post('/api/bitrix/config', config)
+    const response = await this.api.post('/bitrix/config', config)
     return response.data
   }
 
   async disconnectBitrix(): Promise<ApiResponse> {
-    const response = await this.api.post('/api/bitrix/disconnect')
+    const response = await this.api.post('/bitrix/disconnect')
     return response.data
   }
 
@@ -373,7 +374,7 @@ class ApiService {
     endDate?: string
     limit?: number
   }): Promise<ApiResponse> {
-    const response = await this.api.get('/api/bitrix/leads', { params })
+    const response = await this.api.get('/bitrix/leads', { params })
     return response.data
   }
 
@@ -389,7 +390,7 @@ class ApiService {
     campaignName?: string
     dtmfResponse?: string
   }): Promise<ApiResponse> {
-    const response = await this.api.post('/api/bitrix/lead', leadData)
+    const response = await this.api.post('/bitrix/lead', leadData)
     return response.data
   }
 
@@ -399,7 +400,7 @@ class ApiService {
   }
 
   async getBitrixProfile(): Promise<ApiResponse> {
-    const response = await this.api.get('/api/bitrix/profile')
+    const response = await this.api.get('/bitrix/profile')
     return response.data
   }
 
@@ -411,7 +412,7 @@ class ApiService {
      * Получение общей статистики
      */
     getOverview: async (): Promise<CampaignStatsOverview> => {
-      const response = await this.api.get('/api/stats/overview');
+      const response = await this.api.get('/stats/overview');
       // Если данные в обёрточной структуре, извлекаем их
       if (response.data.success && response.data.data) {
         return response.data.data;
@@ -446,7 +447,7 @@ class ApiService {
       }>;
       totalCampaigns: number;
     }> => {
-      const response = await this.api.post('/api/stats/compare', { campaignIds });
+      const response = await this.api.post('/stats/compare', { campaignIds });
       return response.data;
     },
 
@@ -493,7 +494,7 @@ class ApiService {
      * Получение real-time статистики
      */
     getRealtimeStats: async (): Promise<RealtimeStats> => {
-      const response = await this.api.get('/api/stats/realtime');
+      const response = await this.api.get('/stats/realtime');
       // Если данные в обёрточной структуре, извлекаем их
       if (response.data.success && response.data.data) {
         return response.data.data;

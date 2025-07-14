@@ -152,7 +152,7 @@ onUnmounted(() => {
 
 <template>
   <!-- Показываем интерфейс только для авторизованных пользователей -->
-  <div v-if="true" class="min-h-screen bg-gray-50">
+  <div v-if="isAuthenticated" class="min-h-screen bg-gray-50">
     <!-- Боковое меню -->
     <div 
       class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0"
@@ -269,15 +269,20 @@ onUnmounted(() => {
     ></div>
   </div>
   
-  <!-- Экран загрузки для неавторизованных пользователей -->
-  <div v-if="false" class="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div class="text-center">
-      <el-icon size="48" class="text-primary-600 mb-4">
-        <Phone />
-      </el-icon>
-      <h2 class="text-2xl font-bold text-gray-900 mb-2">Dialer System</h2>
-      <p class="text-gray-600">Загрузка...</p>
+  <!-- Экран загрузки для неавторизованных пользователей или страница логина -->
+  <div v-else class="min-h-screen bg-gray-50">
+    <!-- Если это не страница логина, показываем экран загрузки -->
+    <div v-if="route.name !== 'login'" class="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div class="text-center">
+        <el-icon size="48" class="text-primary-600 mb-4">
+          <Phone />
+        </el-icon>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">Dialer System</h2>
+        <p class="text-gray-600">Проверка авторизации...</p>
+      </div>
     </div>
+    <!-- Если это страница логина, показываем router-view -->
+    <router-view v-else />
   </div>
 </template>
 

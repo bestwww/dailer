@@ -57,22 +57,27 @@ class WebSocketService {
 
     // Real-time события диалер системы
     this.socket.on('call_started', (data: any) => {
+      console.log('🔔 WebSocket событие call_started:', data)
       this.emit('call_started', data)
     })
 
     this.socket.on('call_completed', (data: any) => {
+      console.log('🔔 WebSocket событие call_completed:', data)
       this.emit('call_completed', data)
     })
 
     this.socket.on('call_failed', (data: any) => {
+      console.log('🔔 WebSocket событие call_failed:', data)
       this.emit('call_failed', data)
     })
 
     this.socket.on('campaign_updated', (data: any) => {
+      console.log('🔔 WebSocket событие campaign_updated получено:', data)
       this.emit('campaign_updated', data)
     })
 
     this.socket.on('system_stats', (data: any) => {
+      console.log('🔔 WebSocket событие system_stats:', data)
       this.emit('system_stats', data)
     })
   }

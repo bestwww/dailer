@@ -244,11 +244,15 @@ export async function startCampaign(req: Request, res: Response): Promise<void> 
     // Запускаем кампанию в диалере
     await dialerService.startCampaign(id);
 
+    // Получаем обновленную кампанию
+    const updatedCampaign = await campaignModel.getCampaignById(id);
+
     log.info(`Started campaign ID: ${id}`);
 
     res.json({
       success: true,
-      message: 'Кампания запущена успешно'
+      message: 'Кампания запущена успешно',
+      data: updatedCampaign
     });
   } catch (error) {
     log.error(`Error starting campaign ${req.params.id || 'unknown'}:`, error);
@@ -272,11 +276,15 @@ export async function stopCampaign(req: Request, res: Response): Promise<void> {
     // Останавливаем кампанию в диалере
     await dialerService.stopCampaign(id);
 
+    // Получаем обновленную кампанию
+    const updatedCampaign = await campaignModel.getCampaignById(id);
+
     log.info(`Stopped campaign ID: ${id}`);
 
     res.json({
       success: true,
-      message: 'Кампания остановлена успешно'
+      message: 'Кампания остановлена успешно',
+      data: updatedCampaign
     });
   } catch (error) {
     log.error(`Error stopping campaign ${req.params.id || 'unknown'}:`, error);
@@ -300,11 +308,15 @@ export async function pauseCampaign(req: Request, res: Response): Promise<void> 
     // Приостанавливаем кампанию в диалере
     await dialerService.pauseCampaign(id);
 
+    // Получаем обновленную кампанию
+    const updatedCampaign = await campaignModel.getCampaignById(id);
+
     log.info(`Paused campaign ID: ${id}`);
 
     res.json({
       success: true,
-      message: 'Кампания приостановлена успешно'
+      message: 'Кампания приостановлена успешно',
+      data: updatedCampaign
     });
   } catch (error) {
     log.error(`Error pausing campaign ${req.params.id || 'unknown'}:`, error);

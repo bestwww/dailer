@@ -383,7 +383,7 @@ async function pauseCampaign(campaign: Campaign): Promise<void> {
 async function resumeCampaign(campaign: Campaign): Promise<void> {
   try {
     console.log('▶️ Возобновляю кампанию:', campaign.id, 'текущий статус:', campaign.status)
-    await campaignsStore.startCampaign(campaign.id)
+    await campaignsStore.resumeCampaign(campaign.id)
     console.log('✅ Кампания возобновлена успешно')
   } catch (error) {
     console.error('Ошибка возобновления кампании:', error)
@@ -526,8 +526,28 @@ async function deleteCampaign(campaign: Campaign): Promise<void> {
 }
 
 // WebSocket обработчики
-function handleCampaignUpdate(updatedCampaign: Campaign): void {
-  campaignsStore.updateCampaignFromWS(updatedCampaign)
+function handleCampaignUpdate(data: { campaignId: number; status: string; campaign?: Campaign }): void {
+  console.log('🔄 Получено WebSocket событие campaign_updated:', data)
+  
+  if (data.campaign) {
+    // Если получен полный объект кампании, используем его
+    campaignsStore.updateCampaignFromWS(data.campaign)
+  } else {
+    // Если только статус, находим кампанию в store и обновляем её статус
+    const existingCampaign = campaignsStore.campaigns.find(c => c.id === data.campaignId)
+    if (existingCampaign) {
+      const updatedCampaign = { 
+        ...existingCampaign, 
+        status: data.status as CampaignStatus 
+      }
+      campaignsStore.updateCampaignFromWS(updatedCampaign)
+      console.log(`✅ Обновлен статус кампании ${data.campaignId} на ${data.status}`)
+    } else {
+      console.warn(`⚠️ Кампания ${data.campaignId} не найдена в store для обновления статуса`)
+      // Если кампания не найдена, перезагружаем список
+      refreshCampaigns()
+    }
+  }
 }
 
 // Жизненный цикл

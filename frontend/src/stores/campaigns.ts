@@ -188,15 +188,11 @@ export const useCampaignsStore = defineStore('campaigns', () => {
   async function startCampaign(id: number): Promise<void> {
     try {
       loading.value = true
-      const response: ApiResponse = await apiService.startCampaign(id)
+      const response: ApiResponse<Campaign> = await apiService.startCampaign(id)
       
-      if (response.success) {
-        // Получаем обновленную кампанию и обновляем состояние
-        const updatedCampaign = await apiService.getCampaign(id)
-        updateCampaignInList(updatedCampaign)
-        
-        // Принудительно обновляем список кампаний для гарантии корректного отображения
-        await fetchCampaigns()
+      if (response.success && response.data) {
+        // Используем обновленную кампанию из ответа API
+        updateCampaignInList(response.data)
         
         ElMessage.success('Кампания успешно запущена')
       } else {
@@ -217,15 +213,11 @@ export const useCampaignsStore = defineStore('campaigns', () => {
   async function pauseCampaign(id: number): Promise<void> {
     try {
       loading.value = true
-      const response: ApiResponse = await apiService.pauseCampaign(id)
+      const response: ApiResponse<Campaign> = await apiService.pauseCampaign(id)
       
-      if (response.success) {
-        // Получаем обновленную кампанию и обновляем состояние
-        const updatedCampaign = await apiService.getCampaign(id)
-        updateCampaignInList(updatedCampaign)
-        
-        // Принудительно обновляем список кампаний для гарантии корректного отображения
-        await fetchCampaigns()
+      if (response.success && response.data) {
+        // Используем обновленную кампанию из ответа API
+        updateCampaignInList(response.data)
         
         ElMessage.success('Кампания приостановлена')
       } else {
@@ -246,15 +238,11 @@ export const useCampaignsStore = defineStore('campaigns', () => {
   async function stopCampaign(id: number): Promise<void> {
     try {
       loading.value = true
-      const response: ApiResponse = await apiService.stopCampaign(id)
+      const response: ApiResponse<Campaign> = await apiService.stopCampaign(id)
       
-      if (response.success) {
-        // Получаем обновленную кампанию и обновляем состояние
-        const updatedCampaign = await apiService.getCampaign(id)
-        updateCampaignInList(updatedCampaign)
-        
-        // Принудительно обновляем список кампаний для гарантии корректного отображения
-        await fetchCampaigns()
+      if (response.success && response.data) {
+        // Используем обновленную кампанию из ответа API
+        updateCampaignInList(response.data)
         
         ElMessage.success('Кампания остановлена')
       } else {
@@ -263,6 +251,31 @@ export const useCampaignsStore = defineStore('campaigns', () => {
     } catch (error) {
       console.error('Ошибка остановки кампании:', error)
       ElMessage.error('Не удалось остановить кампанию')
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Возобновление кампании (продолжение после паузы)
+   */
+  async function resumeCampaign(id: number): Promise<void> {
+    try {
+      loading.value = true
+      const response: ApiResponse<Campaign> = await apiService.startCampaign(id)
+      
+      if (response.success && response.data) {
+        // Используем обновленную кампанию из ответа API
+        updateCampaignInList(response.data)
+        
+        ElMessage.success('Кампания возобновлена')
+      } else {
+        throw new Error(response.message || 'Не удалось возобновить кампанию')
+      }
+    } catch (error) {
+      console.error('Ошибка возобновления кампании:', error)
+      ElMessage.error('Не удалось возобновить кампанию')
       throw error
     } finally {
       loading.value = false
@@ -342,6 +355,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
     startCampaign,
     pauseCampaign,
     stopCampaign,
+    resumeCampaign,
     setCurrentCampaign,
     clearState,
     updateCampaignFromWS,
