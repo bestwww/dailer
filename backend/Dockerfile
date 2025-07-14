@@ -35,8 +35,8 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 # Копирование исходного кода backend
 COPY backend/ .
 
-# Копирование папки с миграциями из корня проекта
-COPY database/ /database
+# Копирование папки с миграциями из корня проекта (сохраняем структуру папок)
+COPY database /database
 
 # Изменение владельца файлов
 RUN chown -R nodeuser:nodejs /app
@@ -57,8 +57,8 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 # Копирование исходного кода backend
 COPY backend/ .
 
-# Копирование папки с миграциями из корня проекта
-COPY database/ /database
+# Копирование папки с миграциями из корня проекта (сохраняем структуру папок)
+COPY database /database
 
 # Сборка TypeScript приложения
 RUN npm run build
