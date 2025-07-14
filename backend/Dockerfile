@@ -23,13 +23,14 @@ RUN adduser -S nodeuser -u 1001
 WORKDIR /app
 
 # Копирование package.json и package-lock.json для оптимизации кэширования
-COPY package*.json ./
+COPY package.json ./
+COPY package-lock.json* ./
 
 # === Стадия разработки ===
 FROM base AS development
 
 # Установка всех зависимостей (включая dev)
-RUN npm ci
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Копирование исходного кода
 COPY . .
@@ -48,7 +49,7 @@ CMD ["npm", "run", "dev"]
 FROM base AS build
 
 # Установка всех зависимостей (включая dev для сборки)
-RUN npm ci
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Копирование исходного кода
 COPY . .
@@ -97,7 +98,7 @@ CMD ["node", "dist/app.js"]
 FROM development AS test
 
 # Установка всех зависимостей
-RUN npm ci
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Копирование тестовых файлов
 COPY tests/ ./tests/
