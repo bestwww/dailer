@@ -41,7 +41,7 @@ function createApp(): express.Application {
   // CORS для frontend
   if (isDevelopment) {
     app.use(cors({
-      origin: ['http://localhost:5173', 'http://localhost:3000'],
+      origin: ['http://localhost:5173', 'http://localhost:3000', 'http://46.173.16.147:5173'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
       allowedHeaders: ['Content-Type', 'Authorization', 'Range', 'Accept'],
