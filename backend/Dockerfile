@@ -23,8 +23,8 @@ RUN adduser -S nodeuser -u 1001
 WORKDIR /app
 
 # Копирование package.json и package-lock.json для оптимизации кэширования
-COPY package.json ./
-COPY package-lock.json* ./
+COPY backend/package.json ./
+COPY backend/package-lock.json* ./
 
 # === Стадия разработки ===
 FROM base AS development
@@ -32,8 +32,11 @@ FROM base AS development
 # Установка всех зависимостей (включая dev)
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Копирование исходного кода
-COPY . .
+# Копирование исходного кода backend
+COPY backend/ .
+
+# Копирование папки с миграциями из корня проекта
+COPY database/ /database
 
 # Изменение владельца файлов
 RUN chown -R nodeuser:nodejs /app
@@ -51,8 +54,11 @@ FROM base AS build
 # Установка всех зависимостей (включая dev для сборки)
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Копирование исходного кода
-COPY . .
+# Копирование исходного кода backend
+COPY backend/ .
+
+# Копирование папки с миграциями из корня проекта
+COPY database/ /database
 
 # Сборка TypeScript приложения
 RUN npm run build
@@ -74,7 +80,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 
 # Копирование package.json для информации о версии
-COPY package*.json ./
+COPY backend/package*.json ./
 
 # Создание директорий для логов и аудио файлов
 RUN mkdir -p logs audio public \
@@ -101,7 +107,7 @@ FROM development AS test
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Копирование тестовых файлов
-COPY tests/ ./tests/
+COPY backend/tests/ ./tests/
 
 # Команда для тестов
 CMD ["npm", "test"] 

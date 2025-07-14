@@ -70,8 +70,8 @@ services:
   # Backend Node.js
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       target: development
     container_name: dialer_backend
     restart: unless-stopped
