@@ -41,9 +41,9 @@ services:
       timeout: 3s
       retries: 5
 
-  # FreeSWITCH (официальный образ)
+  # FreeSWITCH (публичный образ от ittoyxk)
   freeswitch:
-    image: signalwire/freeswitch:release
+    image: ghcr.io/ittoyxk/freeswitch:v1.10.11
     container_name: dialer_freeswitch
     restart: unless-stopped
     ports:
@@ -52,13 +52,14 @@ services:
       - "8021:8021"        # ESL (Event Socket Library)
       - "16384-16394:16384-16394/udp"  # RTP медиа
     volumes:
-      - ./freeswitch/conf:/etc/freeswitch
-      - freeswitch_logs:/var/log/freeswitch
-      - freeswitch_sounds:/usr/share/freeswitch/sounds
+      - ./freeswitch/conf:/usr/local/freeswitch/conf
+      - freeswitch_logs:/usr/local/freeswitch/log
+      - freeswitch_sounds:/usr/local/freeswitch/sounds
     networks:
       - dialer_network
     environment:
       - DAEMON=false
+      - TZ=Europe/Moscow
     command: ["freeswitch", "-nc", "-nonat"]
     healthcheck:
       test: ["CMD", "fs_cli", "-x", "status"]
