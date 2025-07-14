@@ -89,6 +89,16 @@ services:
       - FREESWITCH_HOST=freeswitch
       - FREESWITCH_PORT=8021
       - FREESWITCH_PASSWORD=ClueCon
+      - JWT_SECRET=e556e588ee21e16ed4485a2c94149363ec8c85c881801895ecce9d786d41084e445fca510a8cf7d6fe771e65d956e23d1e0b40b6b82029b1920bb034c17a5149
+      - MAX_CONCURRENT_CALLS=10
+      - CALLS_PER_MINUTE=30
+      - LOG_LEVEL=info
+      - MONITORING_ENABLED=true
+      - CORS_ORIGIN=http://localhost:5173
+      - SIP_PROVIDER_HOST=sip.example.com
+      - SIP_PROVIDER_USERNAME=test_user
+      - SIP_PROVIDER_PASSWORD=test_password
+      - SIP_CALLER_ID_NUMBER=+70000000000
     networks:
       - dialer_network
     depends_on:
