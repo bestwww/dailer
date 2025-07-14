@@ -5,11 +5,12 @@ FROM node:18-alpine AS development
 
 WORKDIR /app
 
-# Копируем package files
-COPY package*.json ./
+# Копируем package файлы (и package.json и package-lock.json если есть)
+COPY package.json ./
+COPY package-lock.json* ./
 
-# Устанавливаем зависимости
-RUN npm ci
+# Устанавливаем зависимости (используем npm ci если есть lock файл, иначе npm install)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Копируем исходный код
 COPY . .
@@ -25,11 +26,12 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Копируем package files
-COPY package*.json ./
+# Копируем package файлы (и package.json и package-lock.json если есть)
+COPY package.json ./
+COPY package-lock.json* ./
 
-# Устанавливаем зависимости
-RUN npm ci
+# Устанавливаем зависимости (используем npm ci если есть lock файл, иначе npm install)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Копируем исходный код
 COPY . .
