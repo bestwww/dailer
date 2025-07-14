@@ -2,7 +2,7 @@ version: '3.8'
 
 # Конфигурация сервисов для системы автодозвона
 services:
-  # База данных PostgreSQL для хранения кампаний, контактов и результатов
+  # База данных PostgreSQL
   postgres:
     image: postgres:15-alpine
     container_name: dialer_postgres
@@ -17,164 +17,120 @@ services:
       - ./database/migrations:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dialer_user -d dialer_db"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - dialer_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dialer_user -d dialer_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Redis для кеширования и управления очередями звонков
+  # Redis для кэширования
   redis:
     image: redis:7-alpine
     container_name: dialer_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass redis_password_123
+    command: redis-server --requirepass redis_password_123
     volumes:
       - redis_data:/data
     ports:
       - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - dialer_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
-  # FreeSWITCH телефонная платформа
+  # FreeSWITCH (готовый образ)
   freeswitch:
-    build: 
-      context: ./docker/freeswitch
-      dockerfile: Dockerfile
+    image: bettervoice/freeswitch:latest
     container_name: dialer_freeswitch
     restart: unless-stopped
     ports:
-      # SIP сигналинг
-      - "5060:5060/udp"
-      - "5060:5060/tcp"
-      # ESL (Event Socket Library)
-      - "8021:8021"
-      # RTP медиа порты для голоса
-      - "16384-16394:16384-16394/udp"
+      - "5060:5060/udp"    # SIP
+      - "5080:5080/udp"    # SIP альтернативный
+      - "8021:8021"        # ESL (Event Socket Library)
+      - "16384-16394:16384-16394/udp"  # RTP медиа
     volumes:
-      # Конфигурационные файлы FreeSWITCH
       - ./freeswitch/conf:/usr/local/freeswitch/conf
-      # Аудиофайлы для кампаний
-      - ./audio:/usr/local/freeswitch/sounds/custom
-      # Логи FreeSWITCH
       - freeswitch_logs:/usr/local/freeswitch/log
+      - freeswitch_sounds:/usr/local/freeswitch/sounds
+    networks:
+      - dialer_network
     environment:
-      - FREESWITCH_LOG_LEVEL=info
+      - DAEMON=false
     healthcheck:
       test: ["CMD", "fs_cli", "-x", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - dialer_network
-    depends_on:
-      - postgres
-      - redis
 
-  # Backend API сервер на Node.js + TypeScript
+  # Backend Node.js
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
       target: development
     container_name: dialer_backend
     restart: unless-stopped
-    environment:
-      # Настройки приложения
-      NODE_ENV: development
-      PORT: 3000
-      
-      # База данных
-      DATABASE_URL: postgresql://dialer_user:secure_password_123@postgres:5432/dialer_db
-      
-      # Redis
-      REDIS_URL: redis://:redis_password_123@redis:6379
-      
-      # FreeSWITCH ESL
-      FREESWITCH_HOST: freeswitch
-      FREESWITCH_PORT: 8021
-      FREESWITCH_PASSWORD: ClueCon
-      
-      # Битрикс24 интеграция (заполнить при настройке)
-      BITRIX24_DOMAIN: ""
-      BITRIX24_CLIENT_ID: ""
-      BITRIX24_CLIENT_SECRET: ""
-      
-      # JWT для аутентификации
-      JWT_SECRET: super_secret_jwt_key_change_in_production
-      
-      # Настройки диалера
-      MAX_CONCURRENT_CALLS: 10
-      CALLS_PER_MINUTE: 30
-    volumes:
-      # Для разработки - hot reload
-      - ./backend:/app
-      - /app/node_modules
-      # Аудиофайлы
-      - ./audio:/app/public/audio
     ports:
       - "3000:3000"
-      # Debug порт для Node.js
-      - "9229:9229"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/logs:/app/logs
+      - ./audio:/app/audio
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://dialer_user:secure_password_123@postgres:5432/dialer_db
+      - REDIS_URL=redis://:redis_password_123@redis:6379
+      - FREESWITCH_HOST=freeswitch
+      - FREESWITCH_PORT=8021
+      - FREESWITCH_PASSWORD=ClueCon
+    networks:
+      - dialer_network
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       freeswitch:
-        condition: service_healthy
-    networks:
-      - dialer_network
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Frontend веб-интерфейс на Vue.js
+  # Frontend Vue.js
   frontend:
-    build: 
+    build:
       context: ./frontend
       dockerfile: Dockerfile
       target: development
     container_name: dialer_frontend
     restart: unless-stopped
-    environment:
-      - VITE_API_BASE_URL=http://localhost:3000/api
-      - VITE_WS_URL=ws://localhost:3000
-    volumes:
-      # Для разработки - hot reload
-      - ./frontend:/app
-      - /app/node_modules
     ports:
       - "5173:5173"
-    depends_on:
-      - backend
-    networks:
-      - dialer_network
-
-  # Nginx reverse proxy (для production)
-  nginx:
-    image: nginx:alpine
-    container_name: dialer_nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./docker/nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - backend
-      - frontend
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000
+      - VITE_WS_URL=ws://localhost:3000
     networks:
       - dialer_network
-    profiles:
-      - production
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-# Именованные тома для постоянного хранения данных
 volumes:
   postgres_data:
     driver: local
@@ -182,12 +138,12 @@ volumes:
     driver: local
   freeswitch_logs:
     driver: local
+  freeswitch_sounds:
+    driver: local
 
-# Сеть для взаимодействия контейнеров
 networks:
   dialer_network:
     driver: bridge
     ipam:
-      driver: default
       config:
         - subnet: 172.20.0.0/16 
