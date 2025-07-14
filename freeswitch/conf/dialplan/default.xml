@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- 
+  Диалплан для системы автодозвона
+  Обрабатывает исходящие звонки, проигрывает аудио, записывает DTMF
+-->
+<include>
+  <context name="default">
+    
+    <!-- Маршрут для исходящих звонков автодозвона -->
+    <extension name="autodialer_outbound" continue="false">
+      <condition field="destination_number" expression="^autodialer_(\d+)$">
+        
+        <!-- Получаем ID кампании из номера -->
+        <action application="set" data="campaign_id=$1"/>
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="set" data="continue_on_fail=true"/>
+        
+        <!-- Логирование начала звонка -->
+        <action application="log" data="INFO Starting autodialer call for campaign ${campaign_id}"/>
+        
+        <!-- Устанавливаем переменные для звонка -->
+        <action application="set" data="call_timeout=${call_timeout}"/>
+        <action application="set" data="progress_timeout=${progress_timeout}"/>
+        
+        <!-- Caller ID для исходящих звонков -->
+        <action application="set" data="effective_caller_id_name=${conference_auto_outcall_caller_id_name}"/>
+        <action application="set" data="effective_caller_id_number=${conference_auto_outcall_caller_id_number}"/>
+        
+        <!-- Запускаем AMD (Answering Machine Detection) -->
+        <action application="avmd_start"/>
+        
+        <!-- Ожидаем ответа -->
+        <action application="sleep" data="1000"/>
+        
+        <!-- Переходим к обработке ответившего звонка -->
+        <action application="transfer" data="handle_answered_call XML default"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Обработка ответивших звонков -->
+    <extension name="handle_answered_call">
+      <condition field="destination_number" expression="^handle_answered_call$">
+        
+        <!-- Проверяем результат AMD -->
+        <action application="sleep" data="2000"/>
+        
+        <!-- Если обнаружен автоответчик - завершаем звонок -->
+        <action application="set" data="amd_result=${avmd_detect}"/>
+        <action application="log" data="INFO AMD Result: ${amd_result}"/>
+        
+        <!-- Если это автоответчик - завершаем -->
+        <action application="execute_extension" data="check_amd XML default"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Проверка результата AMD -->
+    <extension name="check_amd">
+      <condition field="destination_number" expression="^check_amd$">
+        <condition field="${amd_result}" expression="^machine$">
+          <!-- Автоответчик обнаружен -->
+          <action application="log" data="WARNING Answering machine detected, hanging up"/>
+          <action application="set" data="amd_status=machine"/>
+          <action application="hangup" data="NORMAL_CLEARING"/>
+        </condition>
+        
+        <!-- Если человек ответил - продолжаем -->
+        <action application="set" data="amd_status=human"/>
+        <action application="transfer" data="play_welcome_message XML default"/>
+      </condition>
+    </extension>
+
+    <!-- Проигрывание приветственного сообщения -->
+    <extension name="play_welcome_message">
+      <condition field="destination_number" expression="^play_welcome_message$">
+        
+        <!-- Логируем начало проигрывания -->
+        <action application="log" data="INFO Playing welcome message for campaign ${campaign_id}"/>
+        
+        <!-- Очищаем буфер DTMF -->
+        <action application="flush_dtmf"/>
+        
+        <!-- Устанавливаем обработчик DTMF -->
+        <action application="set" data="playback_terminators=12"/>
+        
+        <!-- Проигрываем приветственное сообщение -->
+        <!-- Путь к файлу берется из переменной campaign_audio_file -->
+        <action application="set" data="audio_file=${custom_sounds_dir}/campaign_${campaign_id}.wav"/>
+        <action application="playback" data="${audio_file}"/>
+        
+        <!-- Если файл не найден - проигрываем дефолтное сообщение -->
+        <action application="playback" data="${welcome_sound}"/>
+        
+        <!-- Ожидаем DTMF ответ -->
+        <action application="transfer" data="collect_dtmf_response XML default"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Сбор DTMF ответа -->
+    <extension name="collect_dtmf_response">
+      <condition field="destination_number" expression="^collect_dtmf_response$">
+        
+        <!-- Проигрываем инструкцию -->
+        <action application="playback" data="${press_key_sound}"/>
+        
+        <!-- Собираем DTMF цифру -->
+        <action application="read" data="user_response 1 1 ${custom_sounds_dir}/invalid.wav dtmf_response 10000 #"/>
+        
+        <!-- Логируем полученный ответ -->
+        <action application="log" data="INFO User DTMF response: ${user_response}"/>
+        
+        <!-- Обрабатываем ответ -->
+        <action application="transfer" data="process_dtmf_response XML default"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Обработка DTMF ответа -->
+    <extension name="process_dtmf_response">
+      <condition field="destination_number" expression="^process_dtmf_response$">
+        
+        <!-- Проверяем ответ 1 (интересно) -->
+        <condition field="${user_response}" expression="^1$">
+          <action application="log" data="INFO User interested (pressed 1) - campaign ${campaign_id}"/>
+          <action application="set" data="call_result=interested"/>
+          <action application="playback" data="${thank_you_sound}"/>
+          
+          <!-- Отправляем событие в Node.js через ESL -->
+          <action application="event" data="Event-Name=CUSTOM,Event-Subclass=dialer::lead_created,Campaign-ID=${campaign_id},Phone-Number=${caller_id_number},DTMF-Response=1,Call-Result=interested"/>
+          
+          <action application="hangup" data="NORMAL_CLEARING"/>
+        </condition>
+        
+        <!-- Проверяем ответ 2 (не интересно) -->
+        <condition field="${user_response}" expression="^2$">
+          <action application="log" data="INFO User not interested (pressed 2) - campaign ${campaign_id}"/>
+          <action application="set" data="call_result=not_interested"/>
+          <action application="playback" data="${thank_you_sound}"/>
+          
+          <!-- Отправляем событие в Node.js для создания лида -->
+          <action application="event" data="Event-Name=CUSTOM,Event-Subclass=dialer::lead_created,Campaign-ID=${campaign_id},Phone-Number=${caller_id_number},DTMF-Response=2,Call-Result=not_interested"/>
+          
+          <action application="hangup" data="NORMAL_CLEARING"/>
+        </condition>
+        
+        <!-- Неверный ввод или тайм-аут -->
+        <action application="log" data="WARNING Invalid DTMF response or timeout - campaign ${campaign_id}"/>
+        <action application="set" data="call_result=no_response"/>
+        
+        <!-- Отправляем событие о неответе -->
+        <action application="event" data="Event-Name=CUSTOM,Event-Subclass=dialer::call_timeout,Campaign-ID=${campaign_id},Phone-Number=${caller_id_number},DTMF-Response=none,Call-Result=no_response"/>
+        
+        <action application="hangup" data="NORMAL_CLEARING"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Обработка всех остальных входящих звонков -->
+    <extension name="default_route">
+      <condition field="destination_number" expression="^.*$">
+        <action application="log" data="INFO Default route - hanging up"/>
+        <action application="hangup" data="CALL_REJECTED"/>
+      </condition>
+    </extension>
+
+  </context>
+</include> 

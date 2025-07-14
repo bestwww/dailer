@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  Конфигурация Event Socket Library (ESL)
+  Используется для интеграции FreeSWITCH с Node.js backend
+-->
+<configuration name="event_socket.conf" description="Socket Client">
+  <settings>
+    <!-- IP адрес для прослушивания ESL соединений -->
+    <!-- 0.0.0.0 позволяет подключения извне контейнера -->
+    <param name="nat-map" value="false"/>
+    <param name="listen-ip" value="0.0.0.0"/>
+    
+    <!-- Порт для ESL соединений -->
+    <param name="listen-port" value="8021"/>
+    
+    <!-- Пароль для подключения к ESL -->
+    <param name="password" value="ClueCon"/>
+    
+    <!-- Разрешить подключения без аутентификации (только для разработки) -->
+    <param name="apply-inbound-acl" value="loopback.auto"/>
+    
+    <!-- Остановить сервер если нет активных соединений -->
+    <param name="stop-on-bind-error" value="true"/>
+    
+  </settings>
+</configuration> 

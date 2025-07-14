@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  Глобальные переменные для FreeSWITCH
+  Система автодозвона
+-->
+<include>
+  <!-- Основные настройки сервера -->
+  <X-PRE-PROCESS cmd="set" data="default_password=dialer_password_123"/>
+  <X-PRE-PROCESS cmd="set" data="sounds_dir=/usr/local/freeswitch/sounds"/>
+  <X-PRE-PROCESS cmd="set" data="recordings_dir=/usr/local/freeswitch/recordings"/>
+  <X-PRE-PROCESS cmd="set" data="storage_dir=/usr/local/freeswitch/storage"/>
+  
+  <!-- Настройки сети -->
+  <X-PRE-PROCESS cmd="set" data="local_ip_v4=auto-nat"/>
+  <X-PRE-PROCESS cmd="set" data="external_ip_v4=auto-nat"/>
+  <X-PRE-PROCESS cmd="set" data="bind_server_ip=auto"/>
+  
+  <!-- SIP настройки -->
+  <X-PRE-PROCESS cmd="set" data="external_sip_port=5060"/>
+  <X-PRE-PROCESS cmd="set" data="external_rtp_ip=auto-nat"/>
+  <X-PRE-PROCESS cmd="set" data="hold_music=local_stream://moh"/>
+  
+  <!-- Настройки RTP портов для медиа -->
+  <X-PRE-PROCESS cmd="set" data="rtp_start_port=16384"/>
+  <X-PRE-PROCESS cmd="set" data="rtp_end_port=16394"/>
+  
+  <!-- Настройки кодеков (оптимизированы для голоса) -->
+  <X-PRE-PROCESS cmd="set" data="global_codec_prefs=PCMU,PCMA,GSM"/>
+  <X-PRE-PROCESS cmd="set" data="outbound_codec_prefs=PCMU,PCMA,GSM"/>
+  
+  <!-- Настройки таймаутов для автодозвона -->
+  <X-PRE-PROCESS cmd="set" data="call_timeout=30"/>
+  <X-PRE-PROCESS cmd="set" data="progress_timeout=6"/>
+  
+  <!-- Event Socket настройки -->
+  <X-PRE-PROCESS cmd="set" data="event_socket_password=ClueCon"/>
+  <X-PRE-PROCESS cmd="set" data="event_socket_port=8021"/>
+  
+  <!-- Настройки AMD (Answering Machine Detection) -->
+  <X-PRE-PROCESS cmd="set" data="amd_timeout=5000"/>
+  <X-PRE-PROCESS cmd="set" data="amd_silence_timeout=1000"/>
+  <X-PRE-PROCESS cmd="set" data="amd_machine_max_word_length=5000"/>
+  
+  <!-- Настройки DTMF -->
+  <X-PRE-PROCESS cmd="set" data="dtmf_duration=1000"/>
+  <X-PRE-PROCESS cmd="set" data="dtmf_gap=50"/>
+  
+  <!-- Настройки для диалера -->
+  <X-PRE-PROCESS cmd="set" data="dialer_max_concurrent_calls=10"/>
+  <X-PRE-PROCESS cmd="set" data="dialer_retry_delay=300"/>
+  
+  <!-- Аудиофайлы системы -->
+  <X-PRE-PROCESS cmd="set" data="custom_sounds_dir=/usr/local/freeswitch/sounds/custom"/>
+  <X-PRE-PROCESS cmd="set" data="welcome_sound=${custom_sounds_dir}/welcome.wav"/>
+  <X-PRE-PROCESS cmd="set" data="press_key_sound=${custom_sounds_dir}/press_key.wav"/>
+  <X-PRE-PROCESS cmd="set" data="thank_you_sound=${custom_sounds_dir}/thank_you.wav"/>
+  
+  <!-- Настройки логирования -->
+  <X-PRE-PROCESS cmd="set" data="console_loglevel=info"/>
+  <X-PRE-PROCESS cmd="set" data="default_areacode="/>
+  <X-PRE-PROCESS cmd="set" data="default_country_code="/>
+  
+  <!-- Sofia SIP настройки -->
+  <X-PRE-PROCESS cmd="set" data="sip_tls_version=tlsv1,tlsv1.1,tlsv1.2"/>
+  <X-PRE-PROCESS cmd="set" data="internal_auth_calls=true"/>
+  <X-PRE-PROCESS cmd="set" data="internal_sip_port=5060"/>
+  
+  <!-- Conference настройки -->
+  <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_name=AutoDialer"/>
+  <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_number=+70000000000"/>
+  
+  <!-- Домен по умолчанию -->
+  <X-PRE-PROCESS cmd="set" data="domain=$${local_ip_v4}"/>
+  <X-PRE-PROCESS cmd="set" data="domain_name=$${domain}"/>
+  
+  <!-- Настройки пользователей -->
+  <X-PRE-PROCESS cmd="set" data="default_context=public"/>
+  
+</include> 
