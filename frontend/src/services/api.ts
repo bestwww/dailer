@@ -320,14 +320,61 @@ class ApiService {
 
     console.log('📤 Отправляем запрос на:', `/campaigns/${campaignId}/audio`)
     
-    const response = await this.api.post(`/campaigns/${campaignId}/audio`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
+    try {
+      const response = await this.api.post(`/campaigns/${campaignId}/audio`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 30000, // 30 секунд таймаут
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            console.log(`📈 Прогресс загрузки: ${percentCompleted}%`)
+          }
+        }
+      })
+      
+      console.log('✅ Ответ сервера - статус:', response.status)
+      console.log('✅ Ответ сервера - заголовки:', response.headers)
+      console.log('✅ Ответ сервера - данные:', response.data)
+      
+      if (!response.data) {
+        throw new Error('Пустой ответ от сервера')
       }
-    })
-    
-    console.log('✅ Ответ сервера:', response.data)
-    return response.data.data
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Неизвестная ошибка сервера')
+      }
+      
+      return response.data.data
+      
+    } catch (error: any) {
+      console.error('❌ Ошибка загрузки аудиофайла:', error)
+      
+      if (error.response) {
+        // Сервер ответил с кодом ошибки
+        console.error('❌ Статус ответа:', error.response.status)
+        console.error('❌ Заголовки ответа:', error.response.headers)
+        console.error('❌ Данные ответа:', error.response.data)
+        
+        const errorMessage = error.response.data?.error || 
+                           error.response.data?.message || 
+                           `Ошибка сервера (${error.response.status})`
+        throw new Error(errorMessage)
+        
+      } else if (error.request) {
+        // Запрос был отправлен, но ответа не получено
+        console.error('❌ Запрос отправлен, но ответа нет:', error.request)
+        console.error('❌ URL запроса:', error.config?.url)
+        console.error('❌ Таймаут:', error.config?.timeout)
+        throw new Error('Сервер не отвечает. Проверьте подключение к серверу.')
+        
+      } else {
+        // Ошибка при настройке запроса
+        console.error('❌ Ошибка настройки запроса:', error.message)
+        throw new Error(`Ошибка запроса: ${error.message}`)
+      }
+    }
   }
 
   // Проверка состояния системы

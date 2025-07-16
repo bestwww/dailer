@@ -461,16 +461,54 @@ async function handleFormSubmit(formData: Partial<Campaign>): Promise<void> {
     // Если есть файл для загрузки, загружаем его
     if (pendingFile && pendingFile.raw) {
       console.log('🎵 Начинаем загрузку аудиофайла для кампании:', campaign.id)
+      console.log('📁 Детали файла:', {
+        name: pendingFile.name,
+        size: pendingFile.size,
+        type: pendingFile.raw?.type,
+        lastModified: pendingFile.raw?.lastModified
+      })
+      
       try {
         const uploadResult = await apiService.uploadCampaignAudio(campaign.id, pendingFile.raw)
         console.log('✅ Аудиофайл успешно загружен:', uploadResult)
-        ElMessage.success('Аудиофайл успешно загружен')
-      } catch (audioError) {
+        
+        // Обновляем кампанию с новыми данными об аудиофайле
+        if (uploadResult) {
+          await refreshCampaigns()
+          ElMessage.success(`Аудиофайл "${pendingFile.name}" успешно загружен`)
+        }
+        
+      } catch (audioError: any) {
         console.error('❌ Ошибка загрузки аудиофайла:', audioError)
-        ElMessage.warning('Кампания создана, но аудиофайл не загружен')
+        console.error('❌ Тип ошибки:', typeof audioError)
+        console.error('❌ Детали ошибки:', {
+          message: audioError.message,
+          stack: audioError.stack,
+          response: audioError.response
+        })
+        
+        // Показываем конкретную ошибку пользователю
+        const errorMessage = audioError.message || 'Неизвестная ошибка при загрузке файла'
+        ElMessage.error({
+          message: `Ошибка загрузки аудиофайла: ${errorMessage}`,
+          duration: 10000,
+          showClose: true
+        })
+        
+        // Если кампания создана, но файл не загружен
+        if (currentCampaign.value) {
+          ElMessage.warning({
+            message: 'Кампания сохранена, но аудиофайл не загружен. Попробуйте загрузить файл позже.',
+            duration: 8000,
+            showClose: true
+          })
+        }
       }
     } else {
       console.log('⚠️ Файл для загрузки отсутствует')
+      if (currentCampaign.value && !currentCampaign.value.audioFilePath) {
+        console.log('ℹ️ Кампания сохранена без аудиофайла')
+      }
     }
     
     // Обновляем список кампаний для гарантии корректного отображения
