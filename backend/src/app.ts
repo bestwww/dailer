@@ -89,8 +89,8 @@ function createApp(): express.Application {
   });
 
   // Парсинг JSON
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.json({ limit: config.bodyParserLimit }));
+  app.use(express.urlencoded({ extended: true, limit: config.bodyParserLimit }));
 
   // === Middleware мониторинга ===
   app.use(monitoringMiddleware.correlation);

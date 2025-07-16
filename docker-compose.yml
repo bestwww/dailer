@@ -99,6 +99,13 @@ services:
       - SIP_PROVIDER_USERNAME=test_user
       - SIP_PROVIDER_PASSWORD=test_password
       - SIP_CALLER_ID_NUMBER=+70000000000
+      # Настройки для загрузки файлов и таймаутов
+      - REQUEST_TIMEOUT=120000
+      - BODY_PARSER_LIMIT=50mb
+      - UPLOAD_TIMEOUT=300000
+      - AUDIO_UPLOAD_PATH=/app/audio
+      - AUDIO_MAX_SIZE=52428800
+      - SUPPORTED_AUDIO_FORMATS=mp3,wav,m4a
     networks:
       - dialer_network
     depends_on:

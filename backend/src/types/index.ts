@@ -436,6 +436,11 @@ export interface AppConfig {
   audioMaxSize: number;
   supportedAudioFormats: string[];
   
+  // Таймауты
+  requestTimeout: number;
+  bodyParserLimit: string;
+  uploadTimeout: number;
+  
   // Диалер
   maxConcurrentCalls: number;
   callsPerMinute: number;

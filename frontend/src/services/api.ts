@@ -325,7 +325,7 @@ class ApiService {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 30000, // 30 секунд таймаут
+        timeout: 120000, // 2 минуты таймаут для загрузки файлов
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)

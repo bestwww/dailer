@@ -51,6 +51,14 @@ const configSchema = Joi.object({
   SUPPORTED_AUDIO_FORMATS: Joi.string().default('wav,mp3,aiff')
     .description('Supported audio formats (comma separated)'),
 
+  // Таймауты для загрузки файлов
+  REQUEST_TIMEOUT: Joi.number().default(60000)
+    .description('Request timeout in milliseconds'),
+  BODY_PARSER_LIMIT: Joi.string().default('10mb')
+    .description('Body parser size limit'),
+  UPLOAD_TIMEOUT: Joi.number().default(300000)
+    .description('Upload timeout in milliseconds (5 minutes)'),
+
   // Настройки диалера
   MAX_CONCURRENT_CALLS: Joi.number().min(1).max(100).default(10)
     .description('Maximum concurrent calls'),
@@ -128,6 +136,11 @@ export const config: AppConfig = {
   audioUploadPath: envVars.AUDIO_UPLOAD_PATH,
   audioMaxSize: envVars.AUDIO_MAX_SIZE,
   supportedAudioFormats: envVars.SUPPORTED_AUDIO_FORMATS.split(','),
+
+  // Таймауты
+  requestTimeout: envVars.REQUEST_TIMEOUT,
+  bodyParserLimit: envVars.BODY_PARSER_LIMIT,
+  uploadTimeout: envVars.UPLOAD_TIMEOUT,
 
   // Диалер
   maxConcurrentCalls: envVars.MAX_CONCURRENT_CALLS,
