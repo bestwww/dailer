@@ -80,7 +80,7 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./backend/logs:/app/logs
-      - ./audio:/app/audio
+      - ./audio:/app/audio:rw
     environment:
       - NODE_ENV=development
       - PORT=3000

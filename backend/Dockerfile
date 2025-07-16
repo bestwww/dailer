@@ -38,6 +38,9 @@ COPY backend/ .
 # Копирование папки с миграциями из корня проекта (сохраняем структуру папок)
 COPY database /database
 
+# Создание папки для аудиофайлов с правильными правами
+RUN mkdir -p /app/audio && chown -R nodeuser:nodejs /app/audio && chmod 755 /app/audio
+
 # Изменение владельца файлов
 RUN chown -R nodeuser:nodejs /app
 USER nodeuser
