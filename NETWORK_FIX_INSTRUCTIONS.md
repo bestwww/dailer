@@ -28,21 +28,21 @@ cd ~/dailer
 # 2. Получить последние изменения
 git pull origin main
 
-# 3. БЫСТРОЕ РЕШЕНИЕ: Запустить автоматическое исправление (исправленная версия)
-./quick-fix-sip-network-v2.sh
+# 3. БЫСТРОЕ РЕШЕНИЕ: Запустить автоматическое исправление (финальная версия)
+./quick-fix-sip-network-v3.sh
 
 # 4. Протестировать звонок
 ./test-sip-trunk.sh call 79206054020
 ```
 
-## 🔧 Что делает скрипт `quick-fix-sip-network-v2.sh`:
+## 🔧 Что делает скрипт `quick-fix-sip-network-v3.sh`:
 
-**ИСПРАВЛЕНИЯ в v2:**
-- ✅ Исправлен конфликт `network_mode` vs `networks`
-- ✅ Убран устаревший параметр `version`
-- ✅ Добавлена валидация Docker Compose конфигурации
-- ✅ Проверка занятости порта 5060
-- ✅ Принудительный рестарт gateway при необходимости
+**ФИНАЛЬНОЕ РЕШЕНИЕ в v3:**
+- ✅ **Отдельный Docker Compose файл** - полностью избегает конфликт networks
+- ✅ **Отдельный контейнер** с host networking (`dialer_freeswitch_host`)
+- ✅ **Скрипт управления** `manage-freeswitch-host.sh`
+- ✅ **Проверка портов** и автоматическая диагностика
+- ✅ **Принудительный рестарт gateway** при необходимости
 
 **Основные функции:**
 
@@ -133,15 +133,42 @@ docker compose logs -f freeswitch
 - Нет ограничений Docker сети для исходящих подключений
 
 ### Файлы конфигурации:
-- `docker-compose.override.yml` - конфигурация host networking
+- `docker-compose.freeswitch-host.yml` - отдельный compose файл с host networking
+- `manage-freeswitch-host.sh` - скрипт управления FreeSWITCH host networking
 - `freeswitch/conf/autoload_configs/sofia.conf.xml` - обновлена для host networking
+
+### Управление FreeSWITCH с host networking:
+```bash
+# Запуск
+./manage-freeswitch-host.sh start
+
+# Остановка  
+./manage-freeswitch-host.sh stop
+
+# Перезапуск
+./manage-freeswitch-host.sh restart
+
+# Логи
+./manage-freeswitch-host.sh logs
+
+# Статус
+./manage-freeswitch-host.sh status
+
+# Возврат к обычной сети
+./manage-freeswitch-host.sh revert
+```
 
 ## 🔄 Возврат к bridge сети (при необходимости)
 
 Если потребуется вернуться к обычной Docker сети:
 ```bash
-rm docker-compose.override.yml
-docker compose restart freeswitch
+# Автоматический возврат
+./manage-freeswitch-host.sh revert
+
+# Или вручную:
+docker compose -f docker-compose.freeswitch-host.yml stop freeswitch-host
+docker compose -f docker-compose.freeswitch-host.yml rm -f freeswitch-host
+docker compose up -d freeswitch
 ```
 
 ## ✅ Ожидаемый результат
@@ -153,7 +180,9 @@ docker compose restart freeswitch
 
 ## 🆘 При проблемах
 
-1. Проверьте логи: `docker compose logs freeswitch`
-2. Убедитесь что порт 5060 свободен на хосте: `netstat -tulpn | grep 5060`
-3. Проверьте доступность SIP сервера с хоста: `ping 62.141.121.197`
-4. Обратитесь за помощью с выводом команды `./fix-network-connectivity.sh` 
+1. Проверьте логи host FreeSWITCH: `./manage-freeswitch-host.sh logs`
+2. Проверьте статус: `./manage-freeswitch-host.sh status`
+3. Убедитесь что порт 5060 свободен на хосте: `netstat -tulpn | grep 5060`
+4. Проверьте доступность SIP сервера с хоста: `ping 62.141.121.197`
+5. Для полной диагностики: `./fix-network-connectivity.sh`
+6. Контейнер должен называться: `dialer_freeswitch_host` 
