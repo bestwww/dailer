@@ -18,7 +18,8 @@ NC='\033[0m' # No Color
 # Конфигурация
 SIP_TRUNK_IP="62.141.121.197"
 SIP_TRUNK_PORT="5070"
-FREESWITCH_CONTAINER="dialer_freeswitch"
+# Автоматическое определение контейнера FreeSWITCH (приоритет host networking)
+FREESWITCH_CONTAINER=""
 TEST_NUMBERS=("79001234567" "+79001234567" "79009876543")
 
 # Функция логирования
@@ -38,17 +39,45 @@ log() {
     esac
 }
 
+# Автоматическое определение контейнера FreeSWITCH
+detect_freeswitch_container() {
+    # Приоритет: host networking контейнер
+    if docker ps --filter "name=dialer_freeswitch_host" --filter "status=running" | grep -q "dialer_freeswitch_host"; then
+        FREESWITCH_CONTAINER="dialer_freeswitch_host"
+        return 0
+    fi
+    
+    # Резерв: обычный контейнер
+    if docker ps --filter "name=dialer_freeswitch" --filter "status=running" | grep -q "dialer_freeswitch"; then
+        FREESWITCH_CONTAINER="dialer_freeswitch"
+        return 0
+    fi
+    
+    # Поиск любого freeswitch контейнера
+    local found_container=$(docker ps --filter "name=freeswitch" --filter "status=running" --format "{{.Names}}" | head -1)
+    if [ -n "$found_container" ]; then
+        FREESWITCH_CONTAINER="$found_container"
+        return 0
+    fi
+    
+    return 1
+}
+
 # Проверка доступности FreeSWITCH
 check_freeswitch() {
     log TITLE "🔍 Проверка FreeSWITCH..."
     
-    if ! docker ps --filter "name=$FREESWITCH_CONTAINER" --filter "status=running" | grep -q "$FREESWITCH_CONTAINER"; then
-        log ERROR "FreeSWITCH контейнер не запущен!"
-        log INFO "Запустите: docker-compose up -d freeswitch"
+    # Автоматически определяем контейнер
+    if ! detect_freeswitch_container; then
+        log ERROR "FreeSWITCH контейнер не найден!"
+        log INFO "Доступные контейнеры:"
+        docker ps --filter "name=freeswitch" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" || true
+        log INFO "Для host networking: ./manage-freeswitch-host.sh start"
+        log INFO "Для обычной сети: docker-compose up -d freeswitch"
         return 1
     fi
     
-    log INFO "✅ FreeSWITCH контейнер запущен"
+    log INFO "✅ FreeSWITCH контейнер запущен: $FREESWITCH_CONTAINER"
     
     # Проверка статуса FreeSWITCH
     if docker exec "$FREESWITCH_CONTAINER" fs_cli -x "status" >/dev/null 2>&1; then
