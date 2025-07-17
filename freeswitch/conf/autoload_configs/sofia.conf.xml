@@ -11,23 +11,24 @@
       <aliases>
       </aliases>
       <gateways>
-        <!-- SIP транк к провайдеру с правильным Caller ID -->
+        <!-- SIP транк к провайдеру без аутентификации (работает по IP whitelist) -->
         <gateway name="sip_trunk">
           <param name="proxy" value="62.141.121.197:5070"/>
+          <!-- Отключаем регистрацию - провайдер работает по IP whitelist -->
           <param name="register" value="false"/>
-          <param name="username" value="FreeSWITCH"/>
+          <!-- Учетные данные не требуются -->
+          <param name="username" value=""/>
           <param name="password" value=""/>
-          <param name="extension" value="FreeSWITCH"/>
           <param name="realm" value="62.141.121.197"/>
-          <!-- Настройки Caller ID -->
+          <!-- Настройки Caller ID - можно передавать любой номер -->
           <param name="from-user" value="+79058615815"/>
           <param name="from-domain" value="62.141.121.197"/>
           <param name="caller-id-in-from" value="true"/>
-          <param name="expire-seconds" value="3600"/>
-          <param name="register-transport" value="udp"/>
-          <param name="retry-seconds" value="30"/>
+          <!-- Базовые настройки подключения -->
           <param name="contact-params" value="transport=udp"/>
           <param name="ping" value="25"/>
+          <!-- Прокси для исходящих звонков -->
+          <param name="outbound-proxy" value="62.141.121.197:5070"/>
         </gateway>
       </gateways>
       <settings>
