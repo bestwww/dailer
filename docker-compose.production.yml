@@ -1,0 +1,315 @@
+# 🚀 Production-готовая конфигурация сервисов для системы автодозвона
+# Версия: 2.0 с улучшенными настройками стабильности и мониторинга
+
+services:
+  # База данных PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: dialer_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dialer_db
+      POSTGRES_USER: dialer_user
+      POSTGRES_PASSWORD: secure_password_123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      # Оптимизация производительности
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAX_CONNECTIONS: 100
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - dialer_network
+    # Улучшенные health checks
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dialer_user -d dialer_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Лимиты ресурсов
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 300s
+    # Ротация логов
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Redis для кэширования
+  redis:
+    image: redis:7-alpine
+    container_name: dialer_redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis_password_123 --maxmemory 512mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - dialer_network
+    # Улучшенные health checks
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password_123", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Лимиты ресурсов
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    # Ротация логов
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # FreeSWITCH (публичный образ от ittoyxk)
+  freeswitch:
+    image: ghcr.io/ittoyxk/freeswitch:v1.10.11
+    container_name: dialer_freeswitch
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"    # SIP
+      - "5080:5080/udp"    # SIP альтернативный
+      - "8021:8021"        # ESL (Event Socket Library)
+      - "16384-16394:16384-16394/udp"  # RTP медиа
+    volumes:
+      - ./freeswitch/conf:/usr/local/freeswitch/conf
+      - freeswitch_logs:/usr/local/freeswitch/log
+      - freeswitch_sounds:/usr/local/freeswitch/sounds
+    networks:
+      - dialer_network
+    environment:
+      - DAEMON=false
+      - TZ=Europe/Moscow
+    command: ["freeswitch", "-nc", "-nonat"]
+    # Улучшенные health checks
+    healthcheck:
+      test: ["CMD", "fs_cli", "-x", "status"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+    # Лимиты ресурсов
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+      restart_policy:
+        condition: on-failure
+        delay: 30s
+        max_attempts: 3
+        window: 600s
+    # Ротация логов
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200m"
+        max-file: "5"
+
+  # Backend Node.js
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: production
+    container_name: dialer_backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./audio:/app/audio:rw
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://dialer_user:secure_password_123@postgres:5432/dialer_db
+      - REDIS_URL=redis://:redis_password_123@redis:6379
+      - FREESWITCH_HOST=freeswitch
+      - FREESWITCH_PORT=8021
+      - FREESWITCH_PASSWORD=ClueCon
+      - JWT_SECRET=e556e588ee21e16ed4485a2c94149363ec8c85c881801895ecce9d786d41084e445fca510a8cf7d6fe771e65d956e23d1e0b40b6b82029b1920bb034c17a5149
+      # Настройки производительности
+      - MAX_CONCURRENT_CALLS=10
+      - CALLS_PER_MINUTE=30
+      - DB_POOL_SIZE=10
+      - DB_CONNECTION_TIMEOUT=10000
+      # Настройки логирования
+      - LOG_LEVEL=info
+      - MONITORING_ENABLED=true
+      # CORS настройки
+      - CORS_ORIGIN=http://localhost:5173
+      # SIP провайдер
+      - SIP_PROVIDER_HOST=sip.example.com
+      - SIP_PROVIDER_USERNAME=test_user
+      - SIP_PROVIDER_PASSWORD=test_password
+      - SIP_CALLER_ID_NUMBER=+70000000000
+      # Настройки для загрузки файлов и таймаутов (увеличены для стабильности)
+      - REQUEST_TIMEOUT=180000
+      - BODY_PARSER_LIMIT=100mb
+      - UPLOAD_TIMEOUT=600000
+      - AUDIO_UPLOAD_PATH=/app/audio
+      - AUDIO_MAX_SIZE=104857600  # 100MB
+      - SUPPORTED_AUDIO_FORMATS=mp3,wav,m4a,flac
+      # Настройки мониторинга памяти
+      - NODE_OPTIONS=--max-old-space-size=1024
+      - MEMORY_LIMIT=1024
+      # Graceful shutdown
+      - SHUTDOWN_TIMEOUT=30000
+    networks:
+      - dialer_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      freeswitch:
+        condition: service_started
+    # Улучшенные health checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    # Лимиты ресурсов
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 5
+        window: 300s
+    # Ротация логов
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # Frontend Vue.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: dialer_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:3000}
+    networks:
+      - dialer_network
+    depends_on:
+      - backend
+    # Улучшенные health checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Лимиты ресурсов
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 180s
+    # Ротация логов
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # Watchtower для автоматических обновлений (опционально)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: dialer_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600  # Проверка каждый час
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+    networks:
+      - dialer_network
+    # Ротация логов
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  freeswitch_logs:
+    driver: local
+  freeswitch_sounds:
+    driver: local
+
+networks:
+  dialer_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+    # Настройки для лучшей изоляции
+    driver_opts:
+      com.docker.network.bridge.name: "dialer_br0"
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true" 
