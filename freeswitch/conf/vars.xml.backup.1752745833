@@ -39,9 +39,9 @@
   <!-- Настройки AMD (Answering Machine Detection) -->
   <X-PRE-PROCESS cmd="set" data="amd_timeout=5000"/>
   
-  <!-- Настройки Caller ID для исходящих звонков (формат начинается с 7) -->
-  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_name=Test Company"/>
-  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_number=79058615815"/>
+  <!-- Настройки Caller ID для исходящих звонков -->
+  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_name=AutoDialer"/>
+  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_number=+70000000000"/>
   
   <!-- Внутренние SIP настройки -->
   <X-PRE-PROCESS cmd="set" data="internal_sip_port=5080"/>
@@ -75,7 +75,7 @@
   
   <!-- Conference настройки -->
   <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_name=AutoDialer"/>
-  <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_number=79058615815"/>
+  <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_number=+70000000000"/>
   
   <!-- Домен по умолчанию -->
   <X-PRE-PROCESS cmd="set" data="domain=$${local_ip_v4}"/>

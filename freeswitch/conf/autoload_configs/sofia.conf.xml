@@ -20,8 +20,8 @@
           <param name="username" value=""/>
           <param name="password" value=""/>
           <param name="realm" value="62.141.121.197"/>
-          <!-- Настройки Caller ID - можно передавать любой номер -->
-          <param name="from-user" value="+79058615815"/>
+          <!-- Настройки Caller ID - формат начинается с 7 (без +) -->
+          <param name="from-user" value="79058615815"/>
           <param name="from-domain" value="62.141.121.197"/>
           <param name="caller-id-in-from" value="true"/>
           <!-- Базовые настройки подключения -->
