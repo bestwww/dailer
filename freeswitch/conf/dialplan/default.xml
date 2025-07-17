@@ -157,6 +157,33 @@
       </condition>
     </extension>
 
+    <!-- Маршрутизация исходящих звонков через SIP транк -->
+    <extension name="outbound_calls">
+      <condition field="destination_number" expression="^(\+?[1-9]\d{6,14})$">
+        
+        <!-- Логирование исходящего звонка -->
+        <action application="log" data="INFO Routing outbound call to ${destination_number} via SIP trunk"/>
+        
+        <!-- Устанавливаем переменные для звонка -->
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="set" data="continue_on_fail=true"/>
+        <action application="set" data="call_timeout=30"/>
+        <action application="set" data="progress_timeout=6"/>
+        
+        <!-- Устанавливаем Caller ID если не установлен -->
+        <action application="set" data="effective_caller_id_name=${outbound_caller_id_name}"/>
+        <action application="set" data="effective_caller_id_number=${outbound_caller_id_number}"/>
+        
+        <!-- Маршрутизируем звонок через SIP транк -->
+        <action application="bridge" data="sofia/gateway/sip_trunk/${destination_number}"/>
+        
+        <!-- Обработка неуспешных звонков -->
+        <action application="log" data="WARNING Outbound call failed: ${hangup_cause}"/>
+        <action application="hangup" data="${hangup_cause}"/>
+        
+      </condition>
+    </extension>
+
     <!-- Обработка всех остальных входящих звонков -->
     <extension name="default_route">
       <condition field="destination_number" expression="^.*$">

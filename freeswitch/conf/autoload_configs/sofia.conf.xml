@@ -27,21 +27,40 @@
       
       <gateways>
         <!-- 
-          Пример конфигурации SIP провайдера
-          Замените на настройки вашего SIP провайдера
+          Конфигурация SIP транка 62.141.121.197:5070
+          Peer-to-peer подключение без аутентификации
         -->
-        <gateway name="provider">
-          <!-- Настройки SIP провайдера -->
-          <param name="username" value="your_sip_username"/>
-          <param name="password" value="your_sip_password"/>
-          <param name="realm" value="sip.provider.com"/>
-          <param name="proxy" value="sip.provider.com"/>
-          <param name="register" value="true"/>
+        <gateway name="sip_trunk">
+          <!-- Основные настройки подключения -->
+          <param name="proxy" value="62.141.121.197:5070"/>
+          <param name="realm" value="62.141.121.197"/>
+          <param name="register" value="false"/>
           <param name="register-transport" value="udp"/>
+          
+          <!-- Без аутентификации (peer-to-peer) -->
+          <param name="username" value=""/>
+          <param name="password" value=""/>
+          <param name="from-user" value="freeswitch"/>
+          <param name="from-domain" value="62.141.121.197"/>
+          
+          <!-- Настройки соединения -->
           <param name="retry-seconds" value="30"/>
-          <param name="caller-id-in-from" value="false"/>
+          <param name="caller-id-in-from" value="true"/>
           <param name="contact-params" value=""/>
           <param name="ping" value="25"/>
+          <param name="extension-in-contact" value="true"/>
+          
+          <!-- Настройки для исходящих звонков -->
+          <param name="context" value="public"/>
+          <param name="rtp-ip" value="auto"/>
+          <param name="sip-ip" value="auto"/>
+          
+          <!-- Codec preferences -->
+          <param name="codec-prefs" value="PCMU,PCMA,GSM"/>
+          
+          <!-- Дополнительные параметры -->
+          <param name="extension" value=""/>
+          <param name="expire-seconds" value="600"/>
         </gateway>
       </gateways>
       

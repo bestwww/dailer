@@ -38,6 +38,14 @@
   
   <!-- Настройки AMD (Answering Machine Detection) -->
   <X-PRE-PROCESS cmd="set" data="amd_timeout=5000"/>
+  
+  <!-- Настройки Caller ID для исходящих звонков -->
+  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_name=AutoDialer"/>
+  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_number=+70000000000"/>
+  
+  <!-- Внутренние SIP настройки -->
+  <X-PRE-PROCESS cmd="set" data="internal_sip_port=5080"/>
+  <X-PRE-PROCESS cmd="set" data="internal_auth_calls=false"/>
   <X-PRE-PROCESS cmd="set" data="amd_silence_timeout=1000"/>
   <X-PRE-PROCESS cmd="set" data="amd_machine_max_word_length=5000"/>
   
