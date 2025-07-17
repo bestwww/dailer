@@ -1,150 +1,86 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- 
-  Конфигурация Sofia SIP стека
-  Настроена для исходящих звонков системы автодозвона
--->
-<configuration name="sofia.conf" description="Sofia Endpoint">
-
+<configuration name="sofia.conf" description="sofia Endpoint">
   <global_settings>
-    <!-- Уровень логирования SIP -->
     <param name="log-level" value="0"/>
-    <!-- Автоматическое перезапуск профилей -->
     <param name="auto-restart" value="false"/>
-    <!-- Режим отладки -->
     <param name="debug-presence" value="0"/>
-    <!-- Capture сервер для мониторинга SIP трафика -->
-    <param name="capture-server" value="udp:homer.local:9060"/>
   </global_settings>
 
-  <!-- Профили Sofia -->
   <profiles>
-    
-    <!-- Внешний профиль для исходящих звонков -->
+    <!-- Профиль external для исходящих звонков через SIP транк -->
     <profile name="external">
       <aliases>
-        <alias name="outbound"/>
       </aliases>
-      
       <gateways>
-        <!-- 
-          Конфигурация SIP транка 62.141.121.197:5070
-          Peer-to-peer подключение без аутентификации
-        -->
+        <!-- SIP транк к провайдеру с правильным Caller ID -->
         <gateway name="sip_trunk">
-          <!-- Основные настройки подключения -->
           <param name="proxy" value="62.141.121.197:5070"/>
-          <param name="realm" value="62.141.121.197"/>
           <param name="register" value="false"/>
-          <param name="register-transport" value="udp"/>
-          
-          <!-- Без аутентификации (peer-to-peer) -->
-          <param name="username" value=""/>
+          <param name="username" value="FreeSWITCH"/>
           <param name="password" value=""/>
-          <param name="from-user" value="freeswitch"/>
+          <param name="extension" value="FreeSWITCH"/>
+          <param name="realm" value="62.141.121.197"/>
+          <!-- Настройки Caller ID -->
+          <param name="from-user" value="+79058615815"/>
           <param name="from-domain" value="62.141.121.197"/>
-          
-          <!-- Настройки соединения -->
-          <param name="retry-seconds" value="30"/>
           <param name="caller-id-in-from" value="true"/>
-          <param name="contact-params" value=""/>
+          <param name="expire-seconds" value="3600"/>
+          <param name="register-transport" value="udp"/>
+          <param name="retry-seconds" value="30"/>
+          <param name="contact-params" value="transport=udp"/>
           <param name="ping" value="25"/>
-          <param name="extension-in-contact" value="true"/>
-          
-          <!-- Настройки для исходящих звонков -->
-          <param name="context" value="public"/>
-          <param name="rtp-ip" value="auto"/>
-          <param name="sip-ip" value="auto"/>
-          
-          <!-- Codec preferences -->
-          <param name="codec-prefs" value="PCMU,PCMA,GSM"/>
-          
-          <!-- Дополнительные параметры -->
-          <param name="extension" value=""/>
-          <param name="expire-seconds" value="600"/>
         </gateway>
       </gateways>
-      
       <settings>
-        <!-- Основные настройки профиля -->
+        <!-- Настройки для host networking -->
+        <param name="sip-ip" value="0.0.0.0"/>
+        <param name="sip-port" value="5060"/>
+        <param name="rtp-ip" value="0.0.0.0"/>
+        <param name="use-rtp-timer" value="true"/>
+        <param name="rtp-timer-name" value="soft"/>
         <param name="context" value="public"/>
         <param name="rfc2833-pt" value="101"/>
-        <param name="sip-port" value="$${external_sip_port}"/>
+        <param name="sip-trace" value="no"/>
+        <param name="sip-capture" value="no"/>
+        <param name="watchdog-enabled" value="no"/>
+        <param name="watchdog-step-timeout" value="30000"/>
+        <param name="watchdog-event-timeout" value="30000"/>
+        <param name="log-auth-failures" value="false"/>
+        <param name="forward-unsolicited-mwi-notify" value="false"/>
         <param name="dialplan" value="XML"/>
-        
-        <!-- Настройки медиа -->
-        <param name="rtp-ip" value="$${local_ip_v4}"/>
-        <param name="sip-ip" value="$${local_ip_v4}"/>
-        <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
-        <param name="ext-sip-ip" value="$${external_ip_v4}"/>
-        
-        <!-- RTP настройки -->
+        <param name="dtmf-duration" value="2000"/>
+        <param name="inbound-codec-prefs" value="PCMU,PCMA"/>
+        <param name="outbound-codec-prefs" value="PCMU,PCMA"/>
+        <param name="hold-music" value="$${hold_music}"/>
+        <param name="apply-nat-acl" value="nat.auto"/>
+        <param name="extended-info-parsing" value="true"/>
+        <param name="aggressive-nat-detection" value="true"/>
+        <param name="enable-timer" value="false"/>
+        <param name="enable-100rel" value="true"/>
+        <param name="minimum-session-expires" value="120"/>
+        <param name="apply-inbound-acl" value="domains"/>
+        <param name="record-path" value="$${recordings_dir}"/>
+        <param name="record-template" value="$${base_dir}/recordings/${caller_id_number}.${target_domain}.${strftime(%Y-%m-%d-%H-%M-%S)}.wav"/>
+        <param name="manage-presence" value="false"/>
+        <param name="presence-hosts" value="$${domain}"/>
+        <param name="presence-privacy" value="$${presence_privacy}"/>
+        <param name="inbound-codec-negotiation" value="generous"/>
+        <param name="tls" value="false"/>
+        <param name="inbound-late-negotiation" value="true"/>
+        <param name="inbound-zrtp-passthru" value="true"/>
+        <param name="nonce-ttl" value="60"/>
+        <param name="auth-calls" value="false"/>
+        <param name="inbound-reg-force-matching-username" value="true"/>
+        <param name="auth-all-packets" value="false"/>
+        <param name="ext-rtp-ip" value="0.0.0.0"/>
+        <param name="ext-sip-ip" value="0.0.0.0"/>
         <param name="rtp-timeout-sec" value="300"/>
         <param name="rtp-hold-timeout-sec" value="1800"/>
-        
-        <!-- Codec настройки -->
-        <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
-        <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
-        
-        <!-- Настройки аутентификации -->
-        <param name="auth-calls" value="false"/>
-        <param name="auth-all-packets" value="false"/>
-        
-        <!-- DTMF настройки -->
-        <param name="dtmf-duration" value="2000"/>
-        <param name="dtmf-type" value="rfc2833"/>
-        
-        <!-- Session таймауты -->
-        <param name="session-timeout" value="1800"/>
-        <param name="min-session-expires" value="120"/>
-        
-        <!-- Caller ID -->
-        <param name="caller-id-type" value="rpid"/>
-        
-        <!-- Настройки для NAT -->
-        <param name="aggressive-nat-detection" value="true"/>
-        <param name="NDLB-received-in-nat-reg-contact" value="true"/>
-        <param name="NDLB-force-rport" value="true"/>
-        <param name="NDLB-broken-auth-hash" value="true"/>
-        
-        <!-- Настройки для автодозвона -->
-        <param name="max-proceeding" value="1000"/>
-        <param name="challenge-realm" value="auto_from"/>
-        
+        <!-- Отключаем NAT для host networking -->
+        <param name="force-register-domain" value="62.141.121.197"/>
+        <param name="force-subscription-domain" value="62.141.121.197"/>
+        <param name="force-register-db-domain" value="62.141.121.197"/>
+        <param name="disable-transcoding" value="true"/>
       </settings>
     </profile>
-
-    <!-- Внутренний профиль -->
-    <profile name="internal">
-      <aliases>
-        <alias name="default"/>
-      </aliases>
-      
-      <settings>
-        <param name="context" value="default"/>
-        <param name="rfc2833-pt" value="101"/>
-        <param name="sip-port" value="$${internal_sip_port}"/>
-        <param name="dialplan" value="XML"/>
-        
-        <!-- Медиа настройки -->
-        <param name="rtp-ip" value="$${local_ip_v4}"/>
-        <param name="sip-ip" value="$${local_ip_v4}"/>
-        
-        <!-- Codec настройки -->
-        <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
-        <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
-        
-        <!-- Аутентификация -->
-        <param name="auth-calls" value="$${internal_auth_calls}"/>
-        
-        <!-- DTMF -->
-        <param name="dtmf-duration" value="2000"/>
-        <param name="dtmf-type" value="rfc2833"/>
-        
-        <!-- Hold music -->
-        <param name="hold-music" value="$${hold_music}"/>
-        
-      </settings>
-    </profile>
-
   </profiles>
-</configuration> 
+</configuration>

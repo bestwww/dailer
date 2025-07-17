@@ -40,8 +40,8 @@
   <X-PRE-PROCESS cmd="set" data="amd_timeout=5000"/>
   
   <!-- Настройки Caller ID для исходящих звонков -->
-  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_name=AutoDialer"/>
-  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_number=+70000000000"/>
+  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_name=Test Company"/>
+  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_number=+79058615815"/>
   
   <!-- Внутренние SIP настройки -->
   <X-PRE-PROCESS cmd="set" data="internal_sip_port=5080"/>
