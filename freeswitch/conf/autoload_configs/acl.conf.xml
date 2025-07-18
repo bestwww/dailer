@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Конфигурация Access Control List (ACL) для FreeSWITCH
+  Определяет правила доступа для различных сетей и сервисов
+-->
+<configuration name="acl.conf" description="Network Access Control">
+  <network-lists>
+    
+    <!-- Локальные подключения (localhost) -->
+    <list name="loopback.auto" default="allow">
+      <node type="allow" cidr="127.0.0.0/8"/>
+      <node type="allow" cidr="::1/128"/>
+    </list>
+    
+    <!-- Docker сеть - разрешаем подключения от backend контейнера -->
+    <list name="docker_network" default="deny">
+      <!-- Стандартные Docker сети -->
+      <node type="allow" cidr="172.16.0.0/12"/>
+      <node type="allow" cidr="192.168.0.0/16"/>
+      <node type="allow" cidr="10.0.0.0/8"/>
+      <!-- Разрешаем localhost для совместимости -->
+      <node type="allow" cidr="127.0.0.0/8"/>
+      <node type="allow" cidr="::1/128"/>
+    </list>
+    
+    <!-- Доверенные сети для Event Socket -->
+    <list name="event_socket_trusted" default="deny">
+      <!-- Docker bridge сети -->
+      <node type="allow" cidr="172.16.0.0/12"/>
+      <node type="allow" cidr="192.168.0.0/16"/>
+      <node type="allow" cidr="10.0.0.0/8"/>
+      <!-- Localhost -->
+      <node type="allow" cidr="127.0.0.0/8"/>
+      <node type="allow" cidr="::1/128"/>
+    </list>
+    
+    <!-- Публичные сети (для SIP трафика) -->
+    <list name="public_networks" default="deny">
+      <!-- Здесь можно добавить IP адреса SIP провайдеров -->
+      <!-- Пример: -->
+      <!-- <node type="allow" cidr="203.0.113.0/24"/> -->
+    </list>
+    
+    <!-- Домены и сети для разработки -->
+    <list name="development" default="allow">
+      <node type="allow" cidr="172.16.0.0/12"/>
+      <node type="allow" cidr="192.168.0.0/16"/>
+      <node type="allow" cidr="10.0.0.0/8"/>
+      <node type="allow" cidr="127.0.0.0/8"/>
+      <node type="allow" cidr="::1/128"/>
+    </list>
+    
+  </network-lists>
+</configuration> 

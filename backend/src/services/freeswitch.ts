@@ -389,80 +389,7 @@ export class FreeSwitchClient extends EventEmitter {
     log.debug(`FreeSWITCH heartbeat - uptime: ${uptime}s`);
   }
 
-  /**
-   * Отправка команды в FreeSWITCH через TCP (обход ESL проблем)
-   */
-  private async sendCommandViaFsCli(command: string): Promise<string> {
-    const net = require('net');
-    
-    return new Promise((resolve, reject) => {
-      log.info(`📤 Sending FreeSWITCH command via TCP: ${command}`);
-      
-      const timeout = setTimeout(() => {
-        reject(new Error(`FreeSWITCH TCP command timeout after 30s: ${command}`));
-      }, 30000);
 
-      // Прямое TCP подключение к FreeSWITCH Event Socket
-      const socket = new net.Socket();
-      let response = '';
-      let authenticated = false;
-      
-      socket.connect(8021, 'freeswitch', () => {
-        log.info(`📡 Connected to FreeSWITCH TCP socket`);
-      });
-
-      socket.on('data', (data) => {
-        const message = data.toString();
-        response += message;
-        
-        log.info(`📨 Received data from FreeSWITCH: ${JSON.stringify(message)}`);
-        log.info(`📊 Authenticated: ${authenticated}, Full response so far: ${JSON.stringify(response)}`);
-        
-        if (!authenticated && message.includes('Content-Type: auth/request')) {
-          // Отправляем пароль для аутентификации
-          log.info(`🔐 Sending authentication: auth ClueCon`);
-          socket.write('auth ClueCon\n\n');
-          authenticated = true;
-        } else if (authenticated && message.includes('Reply-Text: +OK accepted')) {
-          // Аутентификация успешна, отправляем команду
-          log.info(`✅ Authentication successful, sending command: api ${command}`);
-          socket.write(`api ${command}\n\n`);
-        } else if (authenticated && message.includes('Content-Type: api/response')) {
-          // Получили ответ на команду
-          clearTimeout(timeout);
-          socket.end();
-          
-          const lines = message.split('\n');
-          const result = lines[lines.length - 2] || '';
-          
-          log.info(`📥 FreeSWITCH TCP response: ${result}`);
-          
-          if (result.includes('-ERR')) {
-            reject(new Error(`FreeSWITCH error: ${result}`));
-          } else {
-            resolve(result);
-          }
-        } else {
-          log.info(`⚠️ Unhandled message type or state. Auth: ${authenticated}, Message: ${JSON.stringify(message)}`);
-        }
-      });
-
-      socket.on('error', (error) => {
-        clearTimeout(timeout);
-        reject(new Error(`FreeSWITCH TCP connection error: ${error.message}`));
-      });
-
-      socket.on('close', () => {
-        clearTimeout(timeout);
-        log.info(`📡 FreeSWITCH TCP connection closed. Auth: ${authenticated}, Response: ${JSON.stringify(response)}`);
-        
-        // Если соединение закрылось без получения ответа
-        if (authenticated && !response.includes('Content-Type: api/response')) {
-          reject(new Error(`FreeSWITCH connection closed without response. Last response: ${response}`));
-        }
-      });
-    });
-  }
 
   /**
    * Отправка команды FreeSWITCH
@@ -473,18 +400,18 @@ export class FreeSwitchClient extends EventEmitter {
     }
 
     try {
-      log.info(`📤 Sending FreeSWITCH command: ${command}`);
+      log.debug(`Sending FreeSWITCH command: ${command}`);
       
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error(`FreeSWITCH command timeout after 30s: ${command}`));
-        }, 30000); // 30 секунд timeout
+        }, 30000);
 
         this.connection.api(command, (response: any) => {
           clearTimeout(timeout);
           
           const replyText = response.getHeader('Reply-Text');
-          log.info(`📥 FreeSWITCH response for "${command}": ${replyText || 'OK'}`);
+          log.debug(`FreeSWITCH response: ${replyText || 'OK'}`);
           
           if (replyText?.includes('-ERR')) {
             reject(new Error(replyText));
@@ -504,6 +431,10 @@ export class FreeSwitchClient extends EventEmitter {
    * Инициация исходящего звонка
    */
   async makeCall(phoneNumber: string, campaignId: number, audioFilePath?: string): Promise<string> {
+    if (!this.isConnected) {
+      throw new Error('FreeSWITCH not connected - please check Event Socket configuration');
+    }
+
     try {
       // Генерация UUID для звонка
       const callUuid = await this.generateUUID();
@@ -515,12 +446,12 @@ export class FreeSwitchClient extends EventEmitter {
       const command = `originate ${dialstring}`;
       log.info(`📞 FreeSWITCH command: ${command}`);
       
-      // Отправляем команду через fs_cli (обход ESL проблем)
+      // Отправляем команду через ESL (стандартный способ)
       try {
-        await this.sendCommandViaFsCli(command);
-        log.info(`✅ Originate command sent successfully via TCP`);
+        await this.sendCommand(command);
+        log.info(`✅ Originate command sent successfully via ESL`);
       } catch (error) {
-        log.error(`❌ Failed to send originate command via fs_cli:`, error);
+        log.error(`❌ Failed to send originate command via ESL:`, error);
         throw error;
       }
 

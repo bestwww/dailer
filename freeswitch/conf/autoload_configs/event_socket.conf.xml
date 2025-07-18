@@ -16,8 +16,8 @@
     <!-- Пароль для подключения к ESL -->
     <param name="password" value="ClueCon"/>
     
-    <!-- Разрешить подключения из Docker сети (только для разработки) -->
-    <!-- <param name="apply-inbound-acl" value="loopback.auto"/> -->
+    <!-- Применяем ACL для Event Socket подключений -->
+    <param name="apply-inbound-acl" value="event_socket_trusted"/>
     
     <!-- Остановить сервер если нет активных соединений -->
     <param name="stop-on-bind-error" value="true"/>
