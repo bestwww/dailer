@@ -15,8 +15,17 @@ RUN apt-get update && apt-get install -y \
     automake \
     autoconf \
     libtool \
+    libtool-bin \
     pkg-config \
     git \
+    wget \
+    curl \
+    # Дополнительные инструменты сборки
+    autotools-dev \
+    bison \
+    zlib1g-dev \
+    libjpeg-dev \
+    libncurses5-dev \
     # Зависимости FreeSWITCH
     libssl-dev \
     libcurl4-openssl-dev \
@@ -31,6 +40,10 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev \
     # База данных
     libsqlite3-dev \
+    # UUID библиотеки
+    uuid-dev \
+    # LDAP поддержка
+    libldap2-dev \
     # Сетевые утилиты для диагностики
     netcat-openbsd \
     telnet \
@@ -42,21 +55,30 @@ RUN apt-get update && apt-get install -y \
 
 # Компилируем FreeSWITCH из исходных кодов (МАКСИМАЛЬНАЯ БЕЗОПАСНОСТЬ!)
 RUN cd /usr/src && \
+    echo "🔄 Загружаем исходные коды FreeSWITCH..." && \
     git clone https://github.com/signalwire/freeswitch.git -b v1.10.12 && \
     cd freeswitch && \
-    # Настраиваем сборку
+    echo "🔧 Проверяем версии инструментов сборки..." && \
+    autoconf --version && \
+    automake --version && \
+    libtool --version && \
+    echo "🚀 Запускаем bootstrap..." && \
     ./bootstrap.sh -j && \
+    echo "⚙️ Настраиваем конфигурацию..." && \
     ./configure \
         --prefix=/usr/local/freeswitch \
         --sysconfdir=/etc/freeswitch \
         --enable-core-libedit-support \
         --disable-dependency-tracking \
-        --enable-zrtp && \
-    # Компилируем (занимает время, но результат стоит того!)
+        --enable-zrtp \
+        --disable-fhs && \
+    echo "🔨 Компилируем FreeSWITCH (это займет время)..." && \
     make -j$(nproc) && \
+    echo "📦 Устанавливаем FreeSWITCH..." && \
     make install && \
-    # Очищаем исходники для экономии места
-    cd / && rm -rf /usr/src/freeswitch
+    echo "🧹 Очищаем исходники для экономии места..." && \
+    cd / && rm -rf /usr/src/freeswitch && \
+    echo "✅ FreeSWITCH успешно собран!"
 
 # Создаем пользователя freeswitch для безопасности
 RUN useradd -r -s /bin/false freeswitch
