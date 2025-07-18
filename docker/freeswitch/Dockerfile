@@ -44,8 +44,7 @@ RUN apt-get update && apt-get install -y \
     uuid-dev \
     # LDAP поддержка
     libldap2-dev \
-    # SpanDSP - КРИТИЧЕСКИ ВАЖНО для FreeSWITCH!
-    libspandsp-dev \
+    # SpanDSP отключен - фокусируемся на аудиокодеках
     # Дополнительные аудио библиотеки
     libasound2-dev \
     # PostgreSQL поддержка (опционально)
@@ -88,7 +87,13 @@ RUN cd /usr/src && \
         --enable-core-libedit-support \
         --disable-dependency-tracking \
         --enable-zrtp \
-        --disable-fhs && \
+        --disable-fhs \
+        --disable-mod-spandsp \
+        --disable-mod-fax \
+        --disable-mod-t38gateway \
+        --disable-libvpx \
+        --without-java \
+        --without-python && \
     echo "🔨 Компилируем FreeSWITCH (это займет время)..." && \
     make -j$(nproc) && \
     echo "📦 Устанавливаем FreeSWITCH..." && \
