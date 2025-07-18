@@ -131,9 +131,13 @@ export class DialerService extends EventEmitter {
       await campaignModel.updateCampaign(campaignId, { status: 'active' });
 
       // Запуск процесса обзвона
+      const callInterval = this.calculateCallInterval(campaign.callsPerMinute);
+      log.info(`📞 Setting up dialer interval for campaign ${campaignId}: ${callInterval}ms (${campaign.callsPerMinute} calls/min)`);
+      
       const interval = setInterval(async () => {
+        log.debug(`🔄 Processing campaign ${campaignId} calls...`);
         await this.processCampaignCalls(campaignId);
-      }, this.calculateCallInterval(campaign.callsPerMinute));
+      }, callInterval);
 
       this.campaignIntervals.set(campaignId, interval);
 
@@ -241,13 +245,17 @@ export class DialerService extends EventEmitter {
    */
   private async processCampaignCalls(campaignId: number): Promise<void> {
     try {
+      log.debug(`🔍 processCampaignCalls start for campaign ${campaignId}`);
+      
       if (!this.isRunning) {
+        log.debug(`❌ Dialer not running, skipping campaign ${campaignId}`);
         return;
       }
 
       const campaign = await campaignModel.getCampaignById(campaignId);
       
       if (!campaign || campaign.status !== 'active') {
+        log.warn(`❌ Campaign ${campaignId} not active or not found, stopping`);
         await this.stopCampaign(campaignId);
         return;
       }
@@ -273,18 +281,29 @@ export class DialerService extends EventEmitter {
       }
 
       // Получение следующих контактов для звонков
+      const contactsNeeded = Math.min(campaign.maxConcurrentCalls - currentCampaignCalls, 50);
+      log.debug(`🔍 Looking for ${contactsNeeded} contacts for campaign ${campaignId}`);
+      
       const allContacts = await contactModel.getNextContactsForCalling(
         campaignId,
-        Math.min(campaign.maxConcurrentCalls - currentCampaignCalls, 50) // Получаем больше контактов для фильтрации
+        contactsNeeded // Получаем больше контактов для фильтрации
       );
+
+      log.info(`📋 Found ${allContacts.length} available contacts for campaign ${campaignId}`);
+      if (allContacts.length > 0) {
+        log.info(`📞 Contact statuses: ${allContacts.map(c => `${c.phoneNumber}(${c.status})`).join(', ')}`);
+      }
 
       // Фильтрация контактов по рабочему времени их часовых поясов
       const contactsToCall = allContacts.filter(contact => 
         this.isContactInWorkingTime(campaign, contact)
       ).slice(0, campaign.maxConcurrentCalls - currentCampaignCalls);
 
+      log.info(`📞 Contacts to call after filtering: ${contactsToCall.length}`);
+
       // Совершение звонков
       for (const contact of contactsToCall) {
+        log.info(`📞 Making call to ${contact.phoneNumber} (ID: ${contact.id})`);
         await this.makeCall(campaign, contact);
       }
 
