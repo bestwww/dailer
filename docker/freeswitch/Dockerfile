@@ -63,6 +63,8 @@ RUN apt-get update && apt-get install -y \
     # XML обработка
     libxml2-dev \
     libxslt1-dev \
+    # Sofia-SIP для SIP протокола (КРИТИЧЕСКИ ВАЖНО!)
+    libsofia-sip-ua-dev \
     # Сетевые утилиты для диагностики
     netcat-openbsd \
     telnet \
