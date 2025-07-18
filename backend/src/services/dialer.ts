@@ -323,8 +323,9 @@ export class DialerService extends EventEmitter {
       log.info(`🔄 Starting makeCall for contact ${contact.id} (${contact.phoneNumber})`);
       
       // Проверка черного списка
-      log.debug(`🔍 Checking blacklist for ${contact.phoneNumber}`);
+      log.info(`🔍 Checking blacklist for ${contact.phoneNumber}`);
       const blacklistCheck = await blacklistModel.isBlacklisted(contact.phoneNumber);
+      log.info(`✅ Blacklist check completed for ${contact.phoneNumber}, isBlacklisted: ${blacklistCheck.isBlacklisted}`);
       
       if (blacklistCheck.isBlacklisted) {
         log.warn(`Blocked call to blacklisted number: ${contact.phoneNumber}`, {
