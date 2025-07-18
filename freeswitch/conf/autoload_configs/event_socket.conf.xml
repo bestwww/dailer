@@ -20,8 +20,8 @@ docker exec dialer_freeswitch fs_cli -x "show sockets"
     <!-- Применяем ACL для Event Socket подключений -->
     <param name="apply-inbound-acl" value="event_socket_trusted"/>
     
-    <!-- Остановить сервер если нет активных соединений -->
-    <param name="stop-on-bind-error" value="true"/>
+    <!-- Отключаем stop-on-bind-error для диагностики -->
+    <param name="stop-on-bind-error" value="false"/>
     
   </settings>
 </configuration> 
