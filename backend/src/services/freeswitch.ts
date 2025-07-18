@@ -49,7 +49,13 @@ export class FreeSwitchClient extends EventEmitter {
         return;
       }
 
-      log.freeswitch(`Connecting to FreeSWITCH at ${config.freeswitchHost}:${config.freeswitchPort}`);
+      log.freeswitch(`🔌 Connecting to FreeSWITCH at ${config.freeswitchHost}:${config.freeswitchPort}`);
+      log.freeswitch(`🔑 Using password: ${config.freeswitchPassword ? '[SET]' : '[NOT SET]'}`);
+
+      // Дополнительная проверка конфигурации
+      if (!config.freeswitchHost || !config.freeswitchPort) {
+        throw new Error('FreeSWITCH configuration is incomplete - check FREESWITCH_HOST and FREESWITCH_PORT');
+      }
 
       this.connection = new modesl.Connection(
         config.freeswitchHost,
@@ -57,20 +63,41 @@ export class FreeSwitchClient extends EventEmitter {
         config.freeswitchPassword
       );
 
-      // Ожидание подключения
+      // Ожидание подключения с расширенным логированием
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
+          log.error(`❌ FreeSWITCH connection timeout after 10s to ${config.freeswitchHost}:${config.freeswitchPort}`);
           reject(new Error('Connection timeout'));
         }, 10000);
 
         this.connection.on('error', (error: Error) => {
           clearTimeout(timeout);
+          log.error(`❌ FreeSWITCH connection error: ${error.message}`, error);
           reject(error);
         });
 
         this.connection.on('esl::connect', () => {
           clearTimeout(timeout);
+          log.freeswitch('✅ ESL connection established successfully');
           resolve(void 0);
+        });
+
+        this.connection.on('esl::ready', () => {
+          log.freeswitch('✅ ESL connection ready for commands');
+        });
+
+        this.connection.on('esl::auth::request', () => {
+          log.freeswitch('🔐 ESL authentication requested');
+        });
+
+        this.connection.on('esl::auth::success', () => {
+          log.freeswitch('✅ ESL authentication successful');
+        });
+
+        this.connection.on('esl::auth::fail', () => {
+          log.error('❌ ESL authentication failed - check FreeSWITCH password');
+          clearTimeout(timeout);
+          reject(new Error('ESL authentication failed'));
         });
       });
 
