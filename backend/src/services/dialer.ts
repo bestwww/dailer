@@ -320,7 +320,10 @@ export class DialerService extends EventEmitter {
    */
   private async makeCall(campaign: Campaign, contact: Contact): Promise<void> {
     try {
+      log.info(`🔄 Starting makeCall for contact ${contact.id} (${contact.phoneNumber})`);
+      
       // Проверка черного списка
+      log.debug(`🔍 Checking blacklist for ${contact.phoneNumber}`);
       const blacklistCheck = await blacklistModel.isBlacklisted(contact.phoneNumber);
       
       if (blacklistCheck.isBlacklisted) {
@@ -369,19 +372,25 @@ export class DialerService extends EventEmitter {
         return; // Прерываем выполнение звонка
       }
 
+      log.debug(`✅ Blacklist check passed for ${contact.phoneNumber}`);
+
       // Обновление статуса контакта
+      log.debug(`📝 Updating contact ${contact.id} status to 'calling'`);
       await contactModel.updateContactCallStats(
         contact.id,
         'calling',
         new Date()
       );
+      log.debug(`✅ Contact ${contact.id} status updated to 'calling'`);
 
       // Инициация звонка через FreeSWITCH
+      log.debug(`📞 Calling freeswitchClient.makeCall for ${contact.phoneNumber}`);
       const callUuid = await freeswitchClient.makeCall(
         contact.phoneNumber,
         campaign.id,
         campaign.audioFilePath
       );
+      log.debug(`✅ freeswitchClient.makeCall returned UUID: ${callUuid}`);
 
       // Сохранение активного звонка
       const activeCall: ActiveCall = {
@@ -409,15 +418,22 @@ export class DialerService extends EventEmitter {
       });
 
     } catch (error) {
-      log.error(`Failed to make call to ${contact.phoneNumber}:`, error);
+      log.error(`❌ ERROR in makeCall for ${contact.phoneNumber} (contact ID: ${contact.id}):`, error);
+      log.error(`❌ Error type: ${error.constructor.name}, message: ${error.message}`);
       
-      // Обновление статуса контакта при ошибке
-      await contactModel.updateContactCallStats(
-        contact.id,
-        'failed',
-        new Date(),
-        this.calculateNextCallTime(contact.callAttempts + 1, campaign.retryDelay, campaign, contact)
-      );
+      try {
+        // Обновление статуса контакта при ошибке
+        log.debug(`📝 Updating contact ${contact.id} status to 'failed' due to error`);
+        await contactModel.updateContactCallStats(
+          contact.id,
+          'failed',
+          new Date(),
+          this.calculateNextCallTime(contact.callAttempts + 1, campaign.retryDelay, campaign, contact)
+        );
+        log.debug(`✅ Contact ${contact.id} status updated to 'failed'`);
+      } catch (updateError) {
+        log.error(`❌ Failed to update contact status after call error:`, updateError);
+      }
     }
   }
 
