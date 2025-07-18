@@ -47,7 +47,7 @@ RUN apt-get update && apt-get install -y \
     # SpanDSP - КРИТИЧЕСКИ ВАЖНО для FreeSWITCH! Собираем из исходного кода FreeSWITCH
     libtiff-dev \
     libaudiofile-dev \
-    libfftw3-dev \\
+    libfftw3-dev \
     # Дополнительные аудио библиотеки
     libasound2-dev \
     # PostgreSQL поддержка (опционально)
