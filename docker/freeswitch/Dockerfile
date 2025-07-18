@@ -82,7 +82,7 @@ RUN cd /usr/src && \
     autoconf --version && \
     automake --version && \
     libtool --version && \
-    ./bootstrap && \
+    if [ -f ./autogen.sh ]; then ./autogen.sh; elif [ -f ./bootstrap.sh ]; then ./bootstrap.sh; else echo "❌ Не найден скрипт автогенерации!"; exit 1; fi && \
     ./configure --prefix=/usr/local && \
     echo "🔨 Компилируем SpanDSP..." && \
     make -j$(nproc) && \
