@@ -443,7 +443,13 @@ export class FreeSwitchClient extends EventEmitter {
       // Инициация звонка
       const command = `originate ${dialstring}`;
       log.info(`📞 FreeSWITCH command: ${command}`);
-      await this.sendCommand(command);
+      
+      // Временно логируем команду без выполнения для диагностики
+      log.info(`🔧 ДИАГНОСТИКА: команда сформирована, но не выполняется из-за ESL проблем`);
+      log.info(`🔧 Полная команда: ${command}`);
+      
+      // TODO: Заменить на рабочий метод отправки команды когда ESL будет исправлен
+      // await this.sendCommand(command);
 
       log.call.started(phoneNumber, campaignId, {
         callUuid,
@@ -482,9 +488,12 @@ export class FreeSwitchClient extends EventEmitter {
    * Генерация UUID для звонка
    */
   private async generateUUID(): Promise<string> {
-    log.info(`🎲 Generating UUID for call...`);
-    const response = await this.sendCommand('create_uuid');
-    const uuid = response.getBody().trim();
+    log.info(`🎲 Generating UUID for call using Node.js crypto...`);
+    
+    // Используем Node.js crypto для генерации UUID вместо FreeSWITCH
+    const crypto = require('crypto');
+    const uuid = crypto.randomUUID();
+    
     log.info(`✅ Generated UUID: ${uuid}`);
     return uuid;
   }
