@@ -373,27 +373,28 @@ export class DialerService extends EventEmitter {
         return; // Прерываем выполнение звонка
       }
 
-      log.debug(`✅ Blacklist check passed for ${contact.phoneNumber}`);
+      log.info(`✅ Blacklist check passed for ${contact.phoneNumber}`);
 
       // Обновление статуса контакта
-      log.debug(`📝 Updating contact ${contact.id} status to 'calling'`);
+      log.info(`📝 Updating contact ${contact.id} status to 'calling'`);
       await contactModel.updateContactCallStats(
         contact.id,
         'calling',
         new Date()
       );
-      log.debug(`✅ Contact ${contact.id} status updated to 'calling'`);
+      log.info(`✅ Contact ${contact.id} status updated to 'calling'`);
 
       // Инициация звонка через FreeSWITCH
-      log.debug(`📞 Calling freeswitchClient.makeCall for ${contact.phoneNumber}`);
+      log.info(`📞 Calling freeswitchClient.makeCall for ${contact.phoneNumber}`);
       const callUuid = await freeswitchClient.makeCall(
         contact.phoneNumber,
         campaign.id,
         campaign.audioFilePath
       );
-      log.debug(`✅ freeswitchClient.makeCall returned UUID: ${callUuid}`);
+      log.info(`✅ freeswitchClient.makeCall returned UUID: ${callUuid}`);
 
       // Сохранение активного звонка
+      log.info(`💾 Saving active call with UUID: ${callUuid}`);
       const activeCall: ActiveCall = {
         callUuid,
         campaignId: campaign.id,
@@ -411,12 +412,15 @@ export class DialerService extends EventEmitter {
         contactId: contact.id,
       });
 
+      log.info(`📡 Emitting call:initiated event for ${contact.phoneNumber}`);
       this.emit('call:initiated', {
         callUuid,
         campaignId: campaign.id,
         contactId: contact.id,
         phoneNumber: contact.phoneNumber,
       });
+
+      log.info(`✅ makeCall completed successfully for contact ${contact.id} (${contact.phoneNumber})`);
 
     } catch (error) {
       log.error(`❌ ERROR in makeCall for ${contact.phoneNumber} (contact ID: ${contact.id}):`, error);
