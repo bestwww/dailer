@@ -17,8 +17,8 @@ docker exec dialer_freeswitch fs_cli -x "show sockets"
     <!-- Пароль для подключения к ESL -->
     <param name="password" value="ClueCon"/>
     
-    <!-- Временно используем loopback.auto для диагностики -->
-    <param name="apply-inbound-acl" value="loopback.auto"/>
+    <!-- Применяем ACL для Event Socket подключений -->
+    <param name="apply-inbound-acl" value="event_socket_trusted"/>
     
     <!-- Остановить сервер если нет активных соединений -->
     <param name="stop-on-bind-error" value="true"/>
