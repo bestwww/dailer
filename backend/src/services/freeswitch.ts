@@ -433,6 +433,7 @@ export class FreeSwitchClient extends EventEmitter {
       
       // Инициация звонка
       const command = `originate ${dialstring}`;
+      log.info(`📞 FreeSWITCH command: ${command}`);
       await this.sendCommand(command);
 
       log.call.started(phoneNumber, campaignId, {
