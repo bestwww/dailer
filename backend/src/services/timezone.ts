@@ -194,19 +194,22 @@ export class TimezoneService {
   }
 
   /**
-   * Парсинг времени из строки HH:mm в объект TimeSlot
+   * Парсинг времени из строки HH:mm или HH:mm:ss в объект TimeSlot
+   * Поддерживает форматы: "09:00", "09:00:00", "9:30", "9:30:15"
    */
   parseTimeSlot(timeString: string): TimeSlot {
-    const match = timeString.match(/^(\d{1,2}):(\d{2})$/);
+    // Поддерживаем форматы HH:mm и HH:mm:ss (секунды игнорируются)
+    const match = timeString.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (!match) {
-      throw new Error(`Некорректный формат времени: ${timeString}`);
+      throw new Error(`Некорректный формат времени: ${timeString}. Ожидается формат HH:mm или HH:mm:ss`);
     }
     
     const hour = parseInt(match[1] || '0');
     const minute = parseInt(match[2] || '0');
+    // Секунды игнорируем для проверки рабочего времени
     
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      throw new Error(`Некорректное время: ${timeString}`);
+      throw new Error(`Некорректное время: ${timeString}. Часы должны быть 0-23, минуты 0-59`);
     }
     
     return { hour, minute };
