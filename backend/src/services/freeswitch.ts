@@ -468,9 +468,13 @@ export class FreeSwitchClient extends EventEmitter {
    * Построение dialstring для звонка
    */
   private buildDialstring(phoneNumber: string, campaignId: number, audioFilePath?: string, callUuid?: string): string {
+    // Нормализация номера: убираем + для SIP провайдера
+    const normalizedNumber = phoneNumber.replace(/^\+/, '');
+    
     const variables = [
       `campaign_id=${campaignId}`,
-      `phone_number=${phoneNumber}`,
+      `phone_number=${phoneNumber}`, // Оригинальный номер для логов
+      `normalized_number=${normalizedNumber}`, // Нормализованный для SIP
       ...(callUuid ? [`call_uuid=${callUuid}`] : []),
       ...(audioFilePath ? [`audio_file=${audioFilePath}`] : []),
       'ignore_early_media=true',
@@ -481,7 +485,8 @@ export class FreeSwitchClient extends EventEmitter {
     const gateway = 'sofia/gateway/sip_trunk'; // Используем реальный gateway из FreeSWITCH
     const extension = '&echo'; // Простое тестовое приложение для проверки
 
-    return `${variableString}${gateway}/${phoneNumber} ${extension}`;
+    // Используем нормализованный номер в dialstring (без плюса)
+    return `${variableString}${gateway}/${normalizedNumber} ${extension}`;
   }
 
   /**
