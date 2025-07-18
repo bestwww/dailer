@@ -44,7 +44,10 @@ RUN apt-get update && apt-get install -y \
     uuid-dev \
     # LDAP поддержка
     libldap2-dev \
-    # SpanDSP отключен - фокусируемся на аудиокодеках
+    # SpanDSP - КРИТИЧЕСКИ ВАЖНО для FreeSWITCH! Собираем из исходного кода FreeSWITCH
+    libtiff-dev \
+    libaudiofile-dev \
+    libfftw3-dev \\
     # Дополнительные аудио библиотеки
     libasound2-dev \
     # PostgreSQL поддержка (опционально)
@@ -69,7 +72,35 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Компилируем FreeSWITCH из исходных кодов (МАКСИМАЛЬНАЯ БЕЗОПАСНОСТЬ!)
+# Сначала компилируем SpanDSP из официального репозитория FreeSWITCH
+RUN cd /usr/src && \
+    echo "🔄 Загружаем исходные коды SpanDSP..." && \
+    git clone https://github.com/freeswitch/spandsp.git && \
+    cd spandsp && \
+    echo "🚀 Настраиваем SpanDSP..." && \
+    echo "🔧 Проверяем инструменты сборки SpanDSP..." && \
+    autoconf --version && \
+    automake --version && \
+    libtool --version && \
+    ./bootstrap && \
+    ./configure --prefix=/usr/local && \
+    echo "🔨 Компилируем SpanDSP..." && \
+    make -j$(nproc) && \
+    echo "📦 Устанавливаем SpanDSP..." && \
+    make install && \
+    echo "🔗 Обновляем библиотечный кеш..." && \
+    ldconfig && \
+    echo "🔧 Настраиваем переменные окружения для SpanDSP..." && \
+    echo "/usr/local/lib" >> /etc/ld.so.conf.d/spandsp.conf && \
+    ldconfig && \
+    echo "✅ SpanDSP успешно установлен!" && \
+    cd /usr/src && rm -rf spandsp
+
+# Устанавливаем переменные окружения для поиска SpanDSP
+ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" \
+    LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
+
+# Теперь компилируем FreeSWITCH из исходных кодов (МАКСИМАЛЬНАЯ БЕЗОПАСНОСТЬ!)
 RUN cd /usr/src && \
     echo "🔄 Загружаем исходные коды FreeSWITCH..." && \
     git clone https://github.com/signalwire/freeswitch.git -b v1.10.12 && \
@@ -81,6 +112,9 @@ RUN cd /usr/src && \
     echo "🚀 Запускаем bootstrap..." && \
     ./bootstrap.sh -j && \
     echo "⚙️ Настраиваем конфигурацию..." && \
+    echo "🔍 Проверяем SpanDSP..." && \
+    pkg-config --exists spandsp && echo "✅ SpanDSP найден" || echo "⚠️ SpanDSP не найден" && \
+    find /usr/local -name "*spandsp*" 2>/dev/null | head -5 && \
     ./configure \
         --prefix=/usr/local/freeswitch \
         --sysconfdir=/etc/freeswitch \
@@ -88,9 +122,10 @@ RUN cd /usr/src && \
         --disable-dependency-tracking \
         --enable-zrtp \
         --disable-fhs \
-        --disable-mod-spandsp \
-        --disable-mod-fax \
-        --disable-mod-t38gateway \
+        --with-spandsp=/usr/local \
+        --enable-mod-spandsp \
+        --enable-mod-fax \
+        --enable-mod-t38gateway \
         --disable-libvpx \
         --without-java \
         --without-python && \
