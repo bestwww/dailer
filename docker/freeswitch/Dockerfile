@@ -44,6 +44,23 @@ RUN apt-get update && apt-get install -y \
     uuid-dev \
     # LDAP поддержка
     libldap2-dev \
+    # SpanDSP - КРИТИЧЕСКИ ВАЖНО для FreeSWITCH!
+    libspandsp-dev \
+    # Дополнительные аудио библиотеки
+    libasound2-dev \
+    # PostgreSQL поддержка (опционально)
+    libpq-dev \
+    # Дополнительные кодеки и библиотеки
+    libopus-dev \
+    libvorbis-dev \
+    libflac-dev \
+    libmp3lame-dev \
+    # Криптографические библиотеки
+    libgcrypt20-dev \
+    libgnutls28-dev \
+    # XML обработка
+    libxml2-dev \
+    libxslt1-dev \
     # Сетевые утилиты для диагностики
     netcat-openbsd \
     telnet \
