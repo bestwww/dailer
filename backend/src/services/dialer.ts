@@ -127,6 +127,9 @@ export class DialerService extends EventEmitter {
         throw new Error(`Cannot start campaign: ${canStart.reason}`);
       }
 
+      // Очистка "зависших" контактов в статусе calling
+      await this.resetStuckContacts(campaignId);
+
       // Обновление статуса кампании
       await campaignModel.updateCampaign(campaignId, { status: 'active' });
 
@@ -1037,6 +1040,35 @@ export class DialerService extends EventEmitter {
       activeCampaigns: this.campaignIntervals.size,
       freeswitchConnected: freeswitchClient.getConnectionStatus().connected,
     };
+  }
+
+  /**
+   * Сброс "зависших" контактов в статусе calling
+   */
+  private async resetStuckContacts(campaignId: number): Promise<void> {
+    try {
+      // Находим контакты, которые более 5 минут находятся в статусе calling
+      const stuckContactsQuery = `
+        UPDATE contacts 
+        SET status = 'retry', last_call_at = NULL, next_call_at = NOW() + INTERVAL '1 minute'
+        WHERE campaign_id = $1 
+          AND status = 'calling' 
+          AND (last_call_at IS NULL OR last_call_at < NOW() - INTERVAL '5 minutes')
+        RETURNING id, phone, status;
+      `;
+      
+      const result = await contactModel.query<any>(stuckContactsQuery, [campaignId]);
+      
+      if (result.rowCount && result.rowCount > 0) {
+        log.info(`🔄 Reset ${result.rowCount} stuck contacts for campaign ${campaignId}`);
+        result.rows.forEach(contact => {
+          log.info(`📞 Reset contact: ${contact.phone} (ID: ${contact.id}) → ${contact.status}`);
+        });
+      }
+      
+    } catch (error) {
+      log.error(`Failed to reset stuck contacts for campaign ${campaignId}:`, error);
+    }
   }
 
   /**
