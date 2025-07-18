@@ -22,7 +22,7 @@ export class ContactModel extends BaseModel {
         email: data.email || null,
         
         // Статус контакта
-        status: 'pending' as ContactStatus,
+        status: 'new' as ContactStatus,
         
         // Данные для Битрикс24
         bitrix_contact_id: data.bitrixContactId || null,
