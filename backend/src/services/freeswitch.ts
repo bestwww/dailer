@@ -398,12 +398,21 @@ export class FreeSwitchClient extends EventEmitter {
     }
 
     try {
-      log.debug(`Sending FreeSWITCH command: ${command}`);
+      log.info(`📤 Sending FreeSWITCH command: ${command}`);
       
       return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error(`FreeSWITCH command timeout after 30s: ${command}`));
+        }, 30000); // 30 секунд timeout
+
         this.connection.api(command, (response: any) => {
-          if (response.getHeader('Reply-Text')?.includes('-ERR')) {
-            reject(new Error(response.getHeader('Reply-Text')));
+          clearTimeout(timeout);
+          
+          const replyText = response.getHeader('Reply-Text');
+          log.info(`📥 FreeSWITCH response for "${command}": ${replyText || 'OK'}`);
+          
+          if (replyText?.includes('-ERR')) {
+            reject(new Error(replyText));
           } else {
             resolve(response);
           }
@@ -463,8 +472,8 @@ export class FreeSwitchClient extends EventEmitter {
     ];
 
     const variableString = `{${variables.join(',')}}`;
-    const gateway = 'sofia/gateway/provider'; // TODO: настраиваемый gateway
-    const extension = '&bridge'; // TODO: настраиваемый extension/dialplan
+    const gateway = 'sofia/gateway/sip_trunk'; // Используем реальный gateway из FreeSWITCH
+    const extension = '&echo'; // Простое тестовое приложение для проверки
 
     return `${variableString}${gateway}/${phoneNumber} ${extension}`;
   }
@@ -473,8 +482,11 @@ export class FreeSwitchClient extends EventEmitter {
    * Генерация UUID для звонка
    */
   private async generateUUID(): Promise<string> {
+    log.info(`🎲 Generating UUID for call...`);
     const response = await this.sendCommand('create_uuid');
-    return response.getBody().trim();
+    const uuid = response.getBody().trim();
+    log.info(`✅ Generated UUID: ${uuid}`);
+    return uuid;
   }
 
   /**
