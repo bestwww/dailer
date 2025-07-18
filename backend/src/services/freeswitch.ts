@@ -444,12 +444,14 @@ export class FreeSwitchClient extends EventEmitter {
       const command = `originate ${dialstring}`;
       log.info(`📞 FreeSWITCH command: ${command}`);
       
-      // Временно логируем команду без выполнения для диагностики
-      log.info(`🔧 ДИАГНОСТИКА: команда сформирована, но не выполняется из-за ESL проблем`);
-      log.info(`🔧 Полная команда: ${command}`);
-      
-      // TODO: Заменить на рабочий метод отправки команды когда ESL будет исправлен
-      // await this.sendCommand(command);
+      // Отправляем команду через ESL
+      try {
+        await this.sendCommand(command);
+        log.info(`✅ Originate command sent successfully`);
+      } catch (error) {
+        log.error(`❌ Failed to send originate command:`, error);
+        throw error;
+      }
 
       log.call.started(phoneNumber, campaignId, {
         callUuid,
