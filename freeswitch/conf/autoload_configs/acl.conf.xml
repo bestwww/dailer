@@ -6,10 +6,14 @@
 <configuration name="acl.conf" description="Network Access Control">
   <network-lists>
     
-    <!-- Локальные подключения (localhost) -->
+    <!-- Локальные подключения (localhost + Docker) -->
     <list name="loopback.auto" default="allow">
       <node type="allow" cidr="127.0.0.0/8"/>
       <node type="allow" cidr="::1/128"/>
+      <!-- Добавляем Docker сети для Event Socket -->
+      <node type="allow" cidr="172.16.0.0/12"/>
+      <node type="allow" cidr="192.168.0.0/16"/>
+      <node type="allow" cidr="10.0.0.0/8"/>
     </list>
     
     <!-- Docker сеть - разрешаем подключения от backend контейнера -->
