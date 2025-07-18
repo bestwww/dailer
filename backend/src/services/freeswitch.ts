@@ -415,12 +415,17 @@ export class FreeSwitchClient extends EventEmitter {
         const message = data.toString();
         response += message;
         
+        log.info(`📨 Received data from FreeSWITCH: ${JSON.stringify(message)}`);
+        log.info(`📊 Authenticated: ${authenticated}, Full response so far: ${JSON.stringify(response)}`);
+        
         if (!authenticated && message.includes('Content-Type: auth/request')) {
           // Отправляем пароль для аутентификации
+          log.info(`🔐 Sending authentication: auth ClueCon`);
           socket.write('auth ClueCon\n\n');
           authenticated = true;
         } else if (authenticated && message.includes('Reply-Text: +OK accepted')) {
           // Аутентификация успешна, отправляем команду
+          log.info(`✅ Authentication successful, sending command: api ${command}`);
           socket.write(`api ${command}\n\n`);
         } else if (authenticated && message.includes('Content-Type: api/response')) {
           // Получили ответ на команду
@@ -437,6 +442,8 @@ export class FreeSwitchClient extends EventEmitter {
           } else {
             resolve(result);
           }
+        } else {
+          log.info(`⚠️ Unhandled message type or state. Auth: ${authenticated}, Message: ${JSON.stringify(message)}`);
         }
       });
 
@@ -447,7 +454,12 @@ export class FreeSwitchClient extends EventEmitter {
 
       socket.on('close', () => {
         clearTimeout(timeout);
-        log.info(`📡 FreeSWITCH TCP connection closed`);
+        log.info(`📡 FreeSWITCH TCP connection closed. Auth: ${authenticated}, Response: ${JSON.stringify(response)}`);
+        
+        // Если соединение закрылось без получения ответа
+        if (authenticated && !response.includes('Content-Type: api/response')) {
+          reject(new Error(`FreeSWITCH connection closed without response. Last response: ${response}`));
+        }
       });
     });
   }
