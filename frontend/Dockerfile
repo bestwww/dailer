@@ -3,6 +3,9 @@
 # Development stage
 FROM node:22-alpine AS development
 
+# Установка curl для health checks
+RUN apk add --no-cache curl
+
 WORKDIR /app
 
 # Копируем package файлы (и package.json и package-lock.json если есть)
@@ -41,6 +44,9 @@ RUN npm run build
 
 # Production stage
 FROM nginx:alpine AS production
+
+# Установка curl для health checks
+RUN apk add --no-cache curl
 
 # Копируем собранные файлы
 COPY --from=builder /app/dist /usr/share/nginx/html

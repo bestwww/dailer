@@ -14,7 +14,7 @@ import { Server as SocketIOServer } from 'socket.io';
 
 import { config, validateCriticalConfig, logConfigInfo, isDevelopment } from '@/config';
 import { checkConnection } from '@/config/database';
-import { logger } from '@/utils/logger';
+import { log, shutdownLogger } from '@/utils/logger';
 import { dialerService } from '@/services/dialer';
 import { schedulerService } from '@/services/scheduler';
 import { monitoringService } from '@/services/monitoring';
@@ -76,7 +76,7 @@ function createApp(): express.Application {
     app.use(morgan('combined', {
       stream: {
         write: (message: string) => {
-          logger.info(message.trim());
+          log.info(message.trim());
         },
       },
     }));
@@ -162,9 +162,9 @@ function createApp(): express.Application {
       
       // Логирование для отладки
       if (isDevelopment) {
-        logger.info(`🎵 Статический файл запрошен: ${path}`);
-        logger.info(`📡 CORS Origin: ${res.getHeader('Access-Control-Allow-Origin')}`);
-        logger.info(`📋 Все заголовки:`, {
+        log.info(`🎵 Статический файл запрошен: ${path}`);
+        log.info(`📡 CORS Origin: ${res.getHeader('Access-Control-Allow-Origin')}`);
+        log.info(`📋 Все заголовки:`, {
           'Content-Type': res.getHeader('Content-Type'),
           'Access-Control-Allow-Origin': res.getHeader('Access-Control-Allow-Origin'),
           'Accept-Ranges': res.getHeader('Accept-Ranges'),
@@ -294,7 +294,7 @@ function createApp(): express.Application {
 
   // Глобальный обработчик ошибок
   app.use((error: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    logger.error('Unhandled error:', {
+    log.error('Unhandled error:', {
       error: error.message,
       stack: error.stack,
       url: req.url,
@@ -340,27 +340,27 @@ async function initializeServer(): Promise<{ app: express.Application; server: a
 
     // WebSocket события
     io.on('connection', (socket) => {
-      logger.info(`WebSocket client connected: ${socket.id}`);
+      log.info(`WebSocket client connected: ${socket.id}`);
 
       socket.on('join_campaign', (campaignId: number) => {
         socket.join(`campaign_${campaignId}`);
-        logger.info(`Client ${socket.id} joined campaign ${campaignId}`);
+        log.info(`Client ${socket.id} joined campaign ${campaignId}`);
       });
 
       socket.on('leave_campaign', (campaignId: number) => {
         socket.leave(`campaign_${campaignId}`);
-        logger.info(`Client ${socket.id} left campaign ${campaignId}`);
+        log.info(`Client ${socket.id} left campaign ${campaignId}`);
       });
 
       socket.on('disconnect', (reason) => {
-        logger.info(`WebSocket client disconnected: ${socket.id}, reason: ${reason}`);
+        log.info(`WebSocket client disconnected: ${socket.id}, reason: ${reason}`);
       });
     });
 
     // Проверка подключения к базе данных
     const dbConnected = await checkConnection();
     if (!dbConnected) {
-      logger.warn('⚠️  Database not available - running in demo mode');
+      log.warn('⚠️  Database not available - running in demo mode');
     }
 
     // Инициализация сервисов
@@ -368,7 +368,7 @@ async function initializeServer(): Promise<{ app: express.Application; server: a
       try {
         // Подписка на события диалера для отправки через WebSocket (ДО запуска диалера!)
         dialerService.on('campaign:started', (data) => {
-          logger.info(`📡 Broadcasting campaign started: ${data.campaignId}`);
+          log.info(`📡 Broadcasting campaign started: ${data.campaignId}`);
           io.emit('campaign_updated', {
             campaignId: data.campaignId,
             status: 'active',
@@ -377,7 +377,7 @@ async function initializeServer(): Promise<{ app: express.Application; server: a
         });
 
         dialerService.on('campaign:stopped', (data) => {
-          logger.info(`📡 Broadcasting campaign stopped: ${data.campaignId}`);
+          log.info(`📡 Broadcasting campaign stopped: ${data.campaignId}`);
           io.emit('campaign_updated', {
             campaignId: data.campaignId,
             status: 'cancelled'
@@ -385,7 +385,7 @@ async function initializeServer(): Promise<{ app: express.Application; server: a
         });
 
         dialerService.on('campaign:paused', (data) => {
-          logger.info(`📡 Broadcasting campaign paused: ${data.campaignId}`);
+          log.info(`📡 Broadcasting campaign paused: ${data.campaignId}`);
           io.emit('campaign_updated', {
             campaignId: data.campaignId,
             status: 'paused'
@@ -394,30 +394,30 @@ async function initializeServer(): Promise<{ app: express.Application; server: a
 
         // Запуск диалера
         await dialerService.start();
-        logger.info('✅ Dialer service started');
+        log.info('✅ Dialer service started');
 
         // Запуск планировщика
         await schedulerService.start();
-        logger.info('✅ Scheduler service started');
+        log.info('✅ Scheduler service started');
 
         // Запуск системы мониторинга
         monitoringService.start();
-        logger.info('✅ Monitoring service started');
+        log.info('✅ Monitoring service started');
 
         // Запуск системы алертов
         alertingService.start();
-        logger.info('✅ Alerting service started');
+        log.info('✅ Alerting service started');
       } catch (error) {
-        logger.error('❌ Failed to start services:', error);
+        log.error('❌ Failed to start services:', error);
         // Не завершаем процесс, продолжаем работу сервера
       }
     }
 
-    logger.info('🚀 Server initialized successfully');
+    log.info('🚀 Server initialized successfully');
     return { app, server, io };
 
   } catch (error) {
-    logger.error('❌ Failed to initialize server:', error);
+    log.error('❌ Failed to initialize server:', error);
     throw error;
   }
 }
@@ -431,64 +431,68 @@ async function startServer(): Promise<void> {
 
     // Запуск сервера
     server.listen(config.port, () => {
-      logger.info(`🌟 Server running on port ${config.port}`);
-      logger.info(`📚 API Documentation: http://localhost:${config.port}/api-docs`);
-      logger.info(`💚 Health check: http://localhost:${config.port}/health`);
+      log.info(`🌟 Server running on port ${config.port}`);
+      log.info(`📚 API Documentation: http://localhost:${config.port}/api-docs`);
+      log.info(`💚 Health check: http://localhost:${config.port}/health`);
     });
 
     // Глобальные обработчики процесса
-    process.on('uncaughtException', (error) => {
-      logger.error('Uncaught Exception:', error);
+    process.on('uncaughtException', async (error) => {
+      log.error('Uncaught Exception:', error);
+      await shutdownLogger(); // Закрываем логгер gracefully
       process.exit(1);
     });
 
-    process.on('unhandledRejection', (reason, promise) => {
-      logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.on('unhandledRejection', async (reason, promise) => {
+      log.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      await shutdownLogger(); // Закрываем логгер gracefully
       process.exit(1);
     });
 
     process.on('SIGTERM', async () => {
-      logger.info('SIGTERM received, shutting down gracefully');
+      log.info('SIGTERM received, shutting down gracefully');
       
       // Остановка сервисов
       try {
         await schedulerService.stop();
-        logger.info('✅ Scheduler service stopped');
+        log.info('✅ Scheduler service stopped');
         
         await dialerService.stop();
-        logger.info('✅ Dialer service stopped');
+        log.info('✅ Dialer service stopped');
       } catch (error) {
-        logger.error('❌ Error stopping services:', error);
+        log.error('❌ Error stopping services:', error);
       }
       
-      server.close(() => {
-        logger.info('Process terminated');
+      server.close(async () => {
+        log.info('Process terminated');
+        await shutdownLogger(); // Закрываем логгер gracefully
         process.exit(0);
       });
     });
 
     process.on('SIGINT', async () => {
-      logger.info('SIGINT received, shutting down gracefully');
+      log.info('SIGINT received, shutting down gracefully');
       
       // Остановка сервисов
       try {
         await schedulerService.stop();
-        logger.info('✅ Scheduler service stopped');
+        log.info('✅ Scheduler service stopped');
         
         await dialerService.stop();
-        logger.info('✅ Dialer service stopped');
+        log.info('✅ Dialer service stopped');
       } catch (error) {
-        logger.error('❌ Error stopping services:', error);
+        log.error('❌ Error stopping services:', error);
       }
       
-      server.close(() => {
-        logger.info('Process terminated');
+      server.close(async () => {
+        log.info('Process terminated');
+        await shutdownLogger(); // Закрываем логгер gracefully
         process.exit(0);
       });
     });
 
   } catch (error) {
-    logger.error('❌ Failed to start server:', error);
+    log.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }

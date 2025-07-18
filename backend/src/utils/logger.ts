@@ -126,8 +126,11 @@ const logger = winston.createLogger({
  * Обработка uncaught exceptions
  */
 logger.exceptions.handle(
-  new winston.transports.File({
-    filename: path.join(ensureLogDirectory(), 'exceptions.log'),
+  new DailyRotateFile({
+    filename: path.join(ensureLogDirectory(), 'exceptions-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '30d',
     format: logFormat,
   })
 );
@@ -136,8 +139,11 @@ logger.exceptions.handle(
  * Обработка unhandled rejections
  */
 logger.rejections.handle(
-  new winston.transports.File({
-    filename: path.join(ensureLogDirectory(), 'rejections.log'),
+  new DailyRotateFile({
+    filename: path.join(ensureLogDirectory(), 'rejections-%DATE%.log'),
+    datePattern: 'YYYY-MM-DD',
+    maxSize: '20m',
+    maxFiles: '30d',
     format: logFormat,
   })
 );
@@ -263,7 +269,45 @@ export function cleanupOldLogs(daysToKeep: number = 30): void {
   }
 }
 
-// Экспорт основного logger'а для обратной совместимости
+/**
+ * Graceful shutdown логгера
+ * Закрывает все транспорты и завершает логирование
+ */
+export function shutdownLogger(): Promise<void> {
+  return new Promise((resolve) => {
+    let transportsClosed = 0;
+    const totalTransports = logger.transports.length;
+
+    if (totalTransports === 0) {
+      resolve();
+      return;
+    }
+
+    // Закрываем каждый транспорт
+    logger.transports.forEach((transport: any) => {
+      if (transport.close) {
+        transport.close(() => {
+          transportsClosed++;
+          if (transportsClosed === totalTransports) {
+            resolve();
+          }
+        });
+      } else {
+        transportsClosed++;
+        if (transportsClosed === totalTransports) {
+          resolve();
+        }
+      }
+    });
+
+    // Fallback timeout если транспорты не закрываются
+    setTimeout(() => {
+      resolve();
+    }, 5000); // 5 секунд максимум ждем
+  });
+}
+
+// Экспортируем сам winston logger для случаев, когда нужен прямой доступ
 export { logger };
 
 // Экспорт по умолчанию
