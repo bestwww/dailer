@@ -41,9 +41,11 @@ services:
       timeout: 3s
       retries: 5
 
-  # FreeSWITCH (стабильный образ от safarov)
+  # FreeSWITCH (собственный безопасный образ)
   freeswitch:
-    image: safarov/freeswitch:latest
+    build: 
+      context: ./docker/freeswitch
+      dockerfile: Dockerfile
     container_name: dialer_freeswitch
     restart: unless-stopped
     ports:

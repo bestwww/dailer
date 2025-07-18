@@ -29,10 +29,12 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 1. Перезапуск FreeSWITCH
-echo -e "\n🔄 1. Перезапуск FreeSWITCH контейнера"
+# 1. Сборка и перезапуск FreeSWITCH с собственным образом
+echo -e "\n🔄 1. Сборка и перезапуск FreeSWITCH с безопасным образом"
+log_info "Собираем собственный безопасный образ FreeSWITCH..."
+docker compose build freeswitch
 log_info "Перезапускаем FreeSWITCH..."
-docker compose restart freeswitch
+docker compose up -d freeswitch
 
 # Ожидание запуска
 sleep 10

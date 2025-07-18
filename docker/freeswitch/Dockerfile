@@ -1,120 +1,109 @@
-# FreeSWITCH Dockerfile для системы автодозвона
-FROM debian:bullseye-slim
+# 🔒 Собственный безопасный образ FreeSWITCH
+# Основан на официальном Debian (проверенная безопасность)
+FROM debian:12-slim
 
 # Метаданные образа
-LABEL maintainer="Dialer System"
-LABEL description="FreeSWITCH для системы автодозвона с поддержкой ESL и AMD"
+LABEL maintainer="Dailer Team"
+LABEL description="Secure FreeSWITCH for Dailer Project"
+LABEL version="1.10.12"
 
-# Переменные окружения
-ENV FREESWITCH_VERSION=1.10.9
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Установка зависимостей и компиляция FreeSWITCH
+# Обновляем пакеты и устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
-    # Базовые утилиты
-    wget curl gnupg2 software-properties-common \
-    # Зависимости для компиляции
-    build-essential cmake automake autoconf libtool pkg-config \
-    # Аудио и кодеки
-    libasound2-dev libspeex-dev libspeexdsp-dev \
-    # SSL/TLS поддержка
-    libssl-dev \
-    # База данных для CDR
-    libpq-dev unixodbc-dev \
-    # Скриптинг
-    liblua5.2-dev \
-    # Медиа обработка
-    libavformat-dev libswscale-dev \
-    # Утилиты
-    sox flac git vim \
+    # Основные утилиты
+    curl \
+    wget \
+    gnupg2 \
+    apt-transport-https \
+    ca-certificates \
+    lsb-release \
+    # Сетевые утилиты для диагностики
+    netcat-openbsd \
+    telnet \
+    net-tools \
+    iputils-ping \
+    # Очистка кэша
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Добавляем официальный репозиторий FreeSWITCH
-RUN wget -O - https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc | apt-key add - && \
-    echo "deb http://files.freeswitch.org/repo/deb/debian-release/ bullseye main" > /etc/apt/sources.list.d/freeswitch.list
+RUN curl -fSsL https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc | \
+    gpg --dearmor --output /usr/share/keyrings/freeswitch-archive-keyring.gpg
 
-# Установка FreeSWITCH и модулей
+RUN echo "deb [signed-by=/usr/share/keyrings/freeswitch-archive-keyring.gpg] \
+    https://files.freeswitch.org/repo/deb/debian-release/ bookworm main" > \
+    /etc/apt/sources.list.d/freeswitch.list
+
+# Устанавливаем FreeSWITCH из официального репозитория
 RUN apt-get update && apt-get install -y \
-    # Основной пакет FreeSWITCH
     freeswitch \
-    # Базовые модули
+    freeswitch-meta-all \
     freeswitch-mod-commands \
-    freeswitch-mod-conference \
-    freeswitch-mod-db \
-    freeswitch-mod-dptools \
-    freeswitch-mod-expr \
-    freeswitch-mod-fifo \
-    freeswitch-mod-hash \
-    freeswitch-mod-voicemail \
-    # ESL модуль для интеграции
-    freeswitch-mod-event-socket \
-    # Аудио модули
-    freeswitch-mod-sndfile \
-    freeswitch-mod-native-file \
-    freeswitch-mod-local-stream \
-    freeswitch-mod-tone-stream \
-    # SIP модуль
-    freeswitch-mod-sofia \
-    # Диалплан модули
-    freeswitch-mod-dialplan-xml \
-    # Логирование
+    freeswitch-mod-console \
     freeswitch-mod-logfile \
-    freeswitch-mod-syslog \
-    # AMD модуль (Answering Machine Detection)
-    freeswitch-mod-avmd \
-    # Дополнительные модули для диалера
-    freeswitch-mod-enum \
-    freeswitch-mod-cdr-csv \
-    freeswitch-mod-httapi \
+    freeswitch-mod-event-socket \
+    freeswitch-mod-sofia \
+    freeswitch-mod-dptools \
+    freeswitch-mod-dialplan-xml \
+    freeswitch-mod-spandsp \
+    freeswitch-mod-g722 \
+    freeswitch-mod-g729 \
+    freeswitch-mod-amr \
+    freeswitch-mod-ilbc \
+    freeswitch-mod-speex \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Создаем пользователя freeswitch
-RUN groupadd -r freeswitch && \
-    useradd -r -g freeswitch -d /usr/local/freeswitch -s /bin/bash freeswitch
+# Создаем пользователя freeswitch для безопасности
+RUN useradd -r -s /bin/false freeswitch
 
 # Создаем необходимые директории
-RUN mkdir -p /usr/local/freeswitch/{log,db,storage,recordings,sounds/custom} && \
-    chown -R freeswitch:freeswitch /usr/local/freeswitch
+RUN mkdir -p /var/lib/freeswitch \
+             /var/log/freeswitch \
+             /var/run/freeswitch \
+             /etc/freeswitch
 
-# Копируем базовую конфигурацию
-COPY conf/ /usr/local/freeswitch/conf/
+# Устанавливаем права доступа
+RUN chown -R freeswitch:freeswitch /var/lib/freeswitch \
+                                   /var/log/freeswitch \
+                                   /var/run/freeswitch \
+                                   /etc/freeswitch
 
-# Создаем скрипт запуска
-RUN echo '#!/bin/bash\n\
-# Проверяем права доступа\n\
-chown -R freeswitch:freeswitch /usr/local/freeswitch\n\
-\n\
-# Запускаем FreeSWITCH в foreground режиме\n\
-exec /usr/bin/freeswitch \\\n\
-    -u freeswitch \\\n\
-    -g freeswitch \\\n\
-    -c \\\n\
-    -nonat \\\n\
-    -nf \\\n\
-    -conf /usr/local/freeswitch/conf \\\n\
-    -log /usr/local/freeswitch/log \\\n\
-    -db /usr/local/freeswitch/db \\\n\
-    -storage /usr/local/freeswitch/storage \\\n\
-    -recordings /usr/local/freeswitch/recordings \\\n\
-    -sounds /usr/local/freeswitch/sounds \\\n\
-    -run /usr/local/freeswitch\n' > /usr/local/bin/start-freeswitch.sh && \
-    chmod +x /usr/local/bin/start-freeswitch.sh
+# Копируем базовую конфигурацию FreeSWITCH
+RUN cp -r /usr/share/freeswitch/conf/vanilla/* /etc/freeswitch/
 
-# Открываем порты
-# 5060 - SIP сигналинг
-# 8021 - ESL (Event Socket Library)
-# 16384-16394 - RTP медиа порты
-EXPOSE 5060/udp 5060/tcp 8021 16384-16394/udp
+# Создаем минимальную конфигурацию Event Socket
+RUN echo '<?xml version="1.0" encoding="UTF-8"?>' > /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '<configuration name="event_socket.conf" description="Socket Client">' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '  <settings>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '    <param name="nat-map" value="false"/>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '    <param name="listen-ip" value="0.0.0.0"/>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '    <param name="listen-port" value="8021"/>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '    <param name="password" value="ClueCon"/>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '    <param name="apply-inbound-acl" value="loopback.auto"/>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '    <param name="stop-on-bind-error" value="true"/>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '  </settings>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml && \
+    echo '</configuration>' >> /etc/freeswitch/autoload_configs/event_socket.conf.xml
 
-# Переключаемся на пользователя freeswitch
-USER freeswitch
+# Настраиваем права на конфигурацию
+RUN chown -R freeswitch:freeswitch /etc/freeswitch
 
-# Рабочая директория
-WORKDIR /usr/local/freeswitch
+# Expose стандартные порты FreeSWITCH
+EXPOSE 5060/udp 5080/udp 8021/tcp 16384-16394/udp
 
-# Запускаем FreeSWITCH
-CMD ["/usr/local/bin/start-freeswitch.sh"]
+# Создаем entrypoint скрипт
+RUN echo '#!/bin/bash' > /docker-entrypoint.sh && \
+    echo 'set -e' >> /docker-entrypoint.sh && \
+    echo '' >> /docker-entrypoint.sh && \
+    echo '# Ждем готовности сети' >> /docker-entrypoint.sh && \
+    echo 'sleep 5' >> /docker-entrypoint.sh && \
+    echo '' >> /docker-entrypoint.sh && \
+    echo '# Запускаем FreeSWITCH в foreground режиме' >> /docker-entrypoint.sh && \
+    echo 'exec /usr/bin/freeswitch -nc -nf -u freeswitch -g freeswitch' >> /docker-entrypoint.sh && \
+    chmod +x /docker-entrypoint.sh
 
-# Проверка здоровья контейнера
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD fs_cli -x "status" || exit 1 
+# Настраиваем healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD fs_cli -x "status" || exit 1
+
+# Точка входа
+ENTRYPOINT ["/docker-entrypoint.sh"] 
