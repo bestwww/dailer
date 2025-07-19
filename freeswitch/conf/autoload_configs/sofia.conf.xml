@@ -11,31 +11,38 @@
       <aliases>
       </aliases>
       <gateways>
-        <!-- SIP транк к провайдеру без аутентификации (работает по IP whitelist) -->
+        <!-- ИСПРАВЛЕНО: SIP транк к провайдеру с унифицированными настройками -->
         <gateway name="sip_trunk">
           <param name="proxy" value="62.141.121.197:5070"/>
           <!-- Отключаем регистрацию - провайдер работает по IP whitelist -->
           <param name="register" value="false"/>
-          <!-- Учетные данные не требуются -->
+          <!-- Учетные данные не требуются для IP-based провайдера -->
           <param name="username" value=""/>
           <param name="password" value=""/>
           <param name="realm" value="62.141.121.197"/>
-          <!-- Настройки Caller ID - формат начинается с 7 (без +) -->
+          <!-- ИСПРАВЛЕНО: Caller ID соответствует логам (79058615815) -->
           <param name="from-user" value="79058615815"/>
-          <param name="from-domain" value="62.141.121.197"/>
+          <param name="from-domain" value="46.173.16.147"/>
           <param name="caller-id-in-from" value="true"/>
-          <!-- Базовые настройки подключения -->
+          <!-- Настройки подключения -->
           <param name="contact-params" value="transport=udp"/>
           <param name="ping" value="25"/>
-          <!-- Прокси для исходящих звонков -->
+          <!-- ИСПРАВЛЕНО: Прокси для исходящих звонков -->
           <param name="outbound-proxy" value="62.141.121.197:5070"/>
+          <!-- Добавляем дополнительные параметры для стабильности -->
+          <param name="retry-seconds" value="30"/>
+          <param name="expire-seconds" value="600"/>
+          <param name="register-transport" value="udp"/>
         </gateway>
       </gateways>
       <settings>
-        <!-- Настройки для host networking -->
+        <!-- ИСПРАВЛЕНО: Настройки для правильной работы в Docker -->
         <param name="sip-ip" value="0.0.0.0"/>
         <param name="sip-port" value="5060"/>
         <param name="rtp-ip" value="0.0.0.0"/>
+        <!-- ИСПРАВЛЕНО: Добавляем внешний IP для правильной работы -->
+        <param name="ext-rtp-ip" value="46.173.16.147"/>
+        <param name="ext-sip-ip" value="46.173.16.147"/>
         <param name="use-rtp-timer" value="true"/>
         <param name="rtp-timer-name" value="soft"/>
         <param name="context" value="public"/>
@@ -72,15 +79,16 @@
         <param name="auth-calls" value="false"/>
         <param name="inbound-reg-force-matching-username" value="true"/>
         <param name="auth-all-packets" value="false"/>
-        <param name="ext-rtp-ip" value="0.0.0.0"/>
-        <param name="ext-sip-ip" value="0.0.0.0"/>
         <param name="rtp-timeout-sec" value="300"/>
         <param name="rtp-hold-timeout-sec" value="1800"/>
-        <!-- Отключаем NAT для host networking -->
-        <param name="force-register-domain" value="62.141.121.197"/>
-        <param name="force-subscription-domain" value="62.141.121.197"/>
-        <param name="force-register-db-domain" value="62.141.121.197"/>
+        <!-- ИСПРАВЛЕНО: Принудительные настройки домена для провайдера -->
+        <param name="force-register-domain" value="46.173.16.147"/>
+        <param name="force-subscription-domain" value="46.173.16.147"/>
+        <param name="force-register-db-domain" value="46.173.16.147"/>
         <param name="disable-transcoding" value="true"/>
+        <!-- Добавляем для отладки SIP сигнализации -->
+        <param name="debug" value="0"/>
+        <param name="sip-capture" value="no"/>
       </settings>
     </profile>
   </profiles>

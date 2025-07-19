@@ -2,6 +2,7 @@
 <!-- 
   Диалплан для системы автодозвона
   Обрабатывает исходящие звонки, проигрывает аудио, записывает DTMF
+  ИСПРАВЛЕНО: Унифицированный Caller ID и правильная работа с SIP trunk
 -->
 <include>
   <context name="default">
@@ -22,9 +23,9 @@
         <action application="set" data="call_timeout=${call_timeout}"/>
         <action application="set" data="progress_timeout=${progress_timeout}"/>
         
-        <!-- Caller ID для исходящих звонков -->
-        <action application="set" data="effective_caller_id_name=${conference_auto_outcall_caller_id_name}"/>
-        <action application="set" data="effective_caller_id_number=${conference_auto_outcall_caller_id_number}"/>
+        <!-- ИСПРАВЛЕНО: Унифицированный Caller ID -->
+        <action application="set" data="effective_caller_id_name=Dailer"/>
+        <action application="set" data="effective_caller_id_number=79058615815"/>
         
         <!-- Запускаем AMD (Answering Machine Detection) -->
         <action application="avmd_start"/>
@@ -75,41 +76,19 @@
     <extension name="play_welcome_message">
       <condition field="destination_number" expression="^play_welcome_message$">
         
-        <!-- Логируем начало проигрывания -->
-        <action application="log" data="INFO Playing welcome message for campaign ${campaign_id}"/>
-        
-        <!-- Очищаем буфер DTMF -->
-        <action application="flush_dtmf"/>
-        
-        <!-- Устанавливаем обработчик DTMF -->
-        <action application="set" data="playback_terminators=12"/>
+        <!-- Устанавливаем переменные для DTMF -->
+        <action application="set" data="dtmf_timeout=10000"/>
+        <action application="set" data="max_dtmf_digits=1"/>
         
         <!-- Проигрываем приветственное сообщение -->
-        <!-- Путь к файлу берется из переменной campaign_audio_file -->
-        <action application="set" data="audio_file=${custom_sounds_dir}/campaign_${campaign_id}.wav"/>
-        <action application="playback" data="${audio_file}"/>
-        
-        <!-- Если файл не найден - проигрываем дефолтное сообщение -->
+        <action application="log" data="INFO Playing welcome message for campaign ${campaign_id}"/>
         <action application="playback" data="${welcome_sound}"/>
         
-        <!-- Ожидаем DTMF ответ -->
-        <action application="transfer" data="collect_dtmf_response XML default"/>
-        
-      </condition>
-    </extension>
-
-    <!-- Сбор DTMF ответа -->
-    <extension name="collect_dtmf_response">
-      <condition field="destination_number" expression="^collect_dtmf_response$">
-        
-        <!-- Проигрываем инструкцию -->
+        <!-- Ожидаем нажатие клавиши -->
         <action application="playback" data="${press_key_sound}"/>
         
-        <!-- Собираем DTMF цифру -->
-        <action application="read" data="user_response 1 1 ${custom_sounds_dir}/invalid.wav dtmf_response 10000 #"/>
-        
-        <!-- Логируем полученный ответ -->
-        <action application="log" data="INFO User DTMF response: ${user_response}"/>
+        <!-- Читаем DTMF ответ -->
+        <action application="read" data="user_response 1 1 ${press_key_sound} user_response ${dtmf_timeout} #"/>
         
         <!-- Обрабатываем ответ -->
         <action application="transfer" data="process_dtmf_response XML default"/>
@@ -117,7 +96,7 @@
       </condition>
     </extension>
 
-    <!-- Обработка DTMF ответа -->
+    <!-- Обработка DTMF ответов -->
     <extension name="process_dtmf_response">
       <condition field="destination_number" expression="^process_dtmf_response$">
         
@@ -157,12 +136,18 @@
       </condition>
     </extension>
 
-    <!-- Маршрутизация исходящих звонков через SIP транк -->
-    <extension name="outbound_calls">
-      <condition field="destination_number" expression="^(\+?[1-9]\d{6,14})$">
+    <!-- ИСПРАВЛЕНО: Маршрутизация исходящих звонков для российских номеров -->
+    <extension name="outbound_calls_russian">
+      <condition field="destination_number" expression="^([78]\d{10})$">
         
         <!-- Логирование исходящего звонка -->
-        <action application="log" data="INFO Routing outbound call to ${destination_number} via SIP trunk"/>
+        <action application="log" data="INFO Routing Russian number $1 via SIP trunk"/>
+        
+        <!-- ИСПРАВЛЕНО: Унифицированный Caller ID -->
+        <action application="set" data="effective_caller_id_name=Dailer"/>
+        <action application="set" data="effective_caller_id_number=79058615815"/>
+        <action application="set" data="sip_from_user=79058615815"/>
+        <action application="set" data="sip_from_host=46.173.16.147"/>
         
         <!-- Устанавливаем переменные для звонка -->
         <action application="set" data="hangup_after_bridge=true"/>
@@ -170,15 +155,40 @@
         <action application="set" data="call_timeout=30"/>
         <action application="set" data="progress_timeout=6"/>
         
-        <!-- Устанавливаем Caller ID если не установлен -->
-        <action application="set" data="effective_caller_id_name=${outbound_caller_id_name}"/>
-        <action application="set" data="effective_caller_id_number=${outbound_caller_id_number}"/>
-        
-        <!-- Маршрутизируем звонок через SIP транк -->
-        <action application="bridge" data="sofia/gateway/sip_trunk/${destination_number}"/>
+        <!-- ИСПРАВЛЕНО: Используем gateway вместо прямого подключения -->
+        <action application="bridge" data="sofia/gateway/sip_trunk/$1"/>
         
         <!-- Обработка неуспешных звонков -->
-        <action application="log" data="WARNING Outbound call failed: ${hangup_cause}"/>
+        <action application="log" data="WARNING Outbound call to $1 failed: ${hangup_cause}"/>
+        <action application="hangup" data="${hangup_cause}"/>
+        
+      </condition>
+    </extension>
+
+    <!-- ИСПРАВЛЕНО: Маршрутизация международных звонков -->
+    <extension name="outbound_calls_international">
+      <condition field="destination_number" expression="^(\+?\d{11,15})$">
+        
+        <!-- Логирование международного звонка -->
+        <action application="log" data="INFO Routing international number $1 via SIP trunk"/>
+        
+        <!-- ИСПРАВЛЕНО: Унифицированный Caller ID -->
+        <action application="set" data="effective_caller_id_name=Dailer"/>
+        <action application="set" data="effective_caller_id_number=79058615815"/>
+        <action application="set" data="sip_from_user=79058615815"/>
+        <action application="set" data="sip_from_host=46.173.16.147"/>
+        
+        <!-- Устанавливаем переменные для звонка -->
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="set" data="continue_on_fail=true"/>
+        <action application="set" data="call_timeout=45"/>
+        <action application="set" data="progress_timeout=10"/>
+        
+        <!-- ИСПРАВЛЕНО: Используем gateway вместо прямого подключения -->
+        <action application="bridge" data="sofia/gateway/sip_trunk/$1"/>
+        
+        <!-- Обработка неуспешных звонков -->
+        <action application="log" data="WARNING International call to $1 failed: ${hangup_cause}"/>
         <action application="hangup" data="${hangup_cause}"/>
         
       </condition>
@@ -187,7 +197,7 @@
     <!-- Обработка всех остальных входящих звонков -->
     <extension name="default_route">
       <condition field="destination_number" expression="^.*$">
-        <action application="log" data="INFO Default route - hanging up"/>
+        <action application="log" data="INFO Default route - hanging up unknown destination"/>
         <action application="hangup" data="CALL_REJECTED"/>
       </condition>
     </extension>

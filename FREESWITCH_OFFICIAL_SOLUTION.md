@@ -122,3 +122,118 @@ services:
 - [Официальная документация FreeSWITCH](https://developer.signalwire.com/freeswitch/FreeSWITCH-Explained/Installation/Linux/Deprecated-Installation-Instructions/61210850/)
 - [SignalWire Repository](https://developer.signalwire.com/platform/integrations/freeswitch/choosing-a-freeswitch-repository)
 - [FreeSWITCH Docker Hub](https://hub.docker.com/r/signalwire/freeswitch) 
+
+
+
+
+
+sed -i 's/ВАШ_НОМЕР/79058615815/g' /usr/local/freeswitch/conf/dialplan/default/01_outbound.xml
+
+## 🎯 **Найдена проблема! Входящие звонки есть, исходящих НЕТ**
+
+В логах видно:
+- ✅ **Входящие INVITE** от разных номеров приходят
+- ❌ **Исходящие INVITE** от нашего `originate` НЕТ совсем
+- ⚠️ **407 Authentication Required** - FreeSWITCH требует аутентификацию
+
+### 🔍 **Проблема в контексте диалплана:**
+
+**1. Проверим текущий контекст для originate:**
+```bash
+fs_cli -x "show dialplan"
+```
+
+**2. Проверим что происходит при originate:**
+```bash
+# Включаем максимальное логирование
+fs_cli -x "console loglevel debug"
+fs_cli -x "fsctl loglevel debug"
+
+# Делаем звонок и сразу смотрим логи
+fs_cli -x "originate sofia/gateway/provider/79206054020 &echo" &
+sleep 2
+tail -20 /usr/local/freeswitch/log/freeswitch.log | grep -E "(originate|dialplan|ERROR)"
+```
+
+**3. Проверим, в каком контексте работает originate:**
+```bash
+# Originate по умолчанию использует контекст "default"
+# Проверим есть ли наш диалплан
+ls -la /usr/local/freeswitch/conf/dialplan/default/
+cat /usr/local/freeswitch/conf/dialplan/default/01_outbound.xml
+```
+
+**4. Попробуем указать контекст явно:**
+```bash
+fs_cli -x "originate {origination_context=default}sofia/gateway/provider/79206054020 &echo"
+```
+
+**5. Создадим простейший тестовый диалплан:**
+```bash
+cat > /usr/local/freeswitch/conf/dialplan/default/00_simple_test.xml << 'EOF'
+<include>
+  <extension name="simple_outbound_test">
+    <condition field="destination_number" expression="^(7\d{10})$">
+      <action application="log" data="CRIT Simple outbound test: calling $1"/>
+      <action application="answer"/>
+      <action application="playback" data="tone_stream://%(100,0,800)"/>
+      <action application="sleep" data="1000"/>
+      <action application="bridge" data="sofia/external/$1@62.141.121.197:5070"/>
+    </condition>
+  </extension>
+</include>
+EOF
+
+fs_cli -x "reloadxml"
+```
+
+**6. Тестируем новый диалплан:**
+```bash
+fs_cli -x "originate sofia/gateway/provider/79206054020 &echo"
+```
+
+**7. Попробуем прямой звонок через внутренний номер:**
+```bash
+# Создаем тестовый внутренний номер
+fs_cli -x "originate user/1000 79206054020"
+```
+
+**8. Проверим работу локальных звонков:**
+```bash
+# Тест что originate вообще работает
+fs_cli -x "originate loopback/9999 &echo"
+```
+
+**9. Проверим модули:**
+```bash
+fs_cli -x "module_exists mod_sofia"
+fs_cli -x "module_exists mod_dialplan_xml"
+fs_cli -x "show modules"
+```
+
+### 🔧 **Альтернативное решение - используем curl для API:**
+
+**10. Попробуем через HTTP API:**
+```bash
+<code_block_to_apply_changes_from>
+```
+
+**11. Возвращаемся и проверим простейший способ:**
+```bash
+docker exec -it freeswitch-test bash
+
+# Максимально простой звонок
+fs_cli -x "bgapi originate sofia/gateway/provider/79206054020 &echo"
+```
+
+### 📋 **Выполните команды поэтапно:**
+
+**Этап 1:** команды 1-3 (диагностика контекста)  
+**Этап 2:** команды 4-6 (создание простого диалплана)  
+**Этап 3:** команды 7-9 (альтернативные тесты)  
+**Этап 4:** команды 10-11 (API подходы)
+
+**Особенно важны результаты команд 1 и 3** - они покажут, есть ли диалплан для исходящих звонков!
+
+
+fs_cli -x "originate loopback/79206054020/default &echo"

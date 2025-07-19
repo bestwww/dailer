@@ -39,8 +39,8 @@
   <!-- Настройки AMD (Answering Machine Detection) -->
   <X-PRE-PROCESS cmd="set" data="amd_timeout=5000"/>
   
-  <!-- Настройки Caller ID для исходящих звонков (формат начинается с 7) -->
-  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_name=Test Company"/>
+  <!-- Настройки Caller ID для исходящих звонков (ИСПРАВЛЕНО: унифицированный номер) -->
+  <X-PRE-PROCESS cmd="set" data="outbound_caller_id_name=Dailer"/>
   <X-PRE-PROCESS cmd="set" data="outbound_caller_id_number=79058615815"/>
   
   <!-- Внутренние SIP настройки -->
@@ -73,8 +73,8 @@
   <X-PRE-PROCESS cmd="set" data="internal_auth_calls=true"/>
   <X-PRE-PROCESS cmd="set" data="internal_sip_port=5060"/>
   
-  <!-- Conference настройки -->
-  <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_name=AutoDialer"/>
+  <!-- ИСПРАВЛЕНО: Conference настройки с унифицированным Caller ID -->
+  <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_name=Dailer"/>
   <X-PRE-PROCESS cmd="set" data="conference_auto_outcall_caller_id_number=79058615815"/>
   
   <!-- Домен по умолчанию -->
