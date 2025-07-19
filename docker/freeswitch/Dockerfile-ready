@@ -1,0 +1,59 @@
+# 🐳 FreeSWITCH Docker - ГОТОВЫЙ ОБРАЗ (FINAL SOLUTION)
+# Использование готового образа FreeSWITCH v1.10.11 для обхода проблем аутентификации SignalWire
+FROM ghcr.io/ittoyxk/freeswitch:v1.10.11
+
+# 📋 Метаданные
+LABEL maintainer="Dailer Team"
+LABEL description="FreeSWITCH for Dailer - готовый образ"
+LABEL version="1.10.11-ready"
+
+# 🌍 Переменные окружения
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# 📦 Установка дополнительных утилит для диагностики
+RUN apt-get update && \
+    apt-get install -y \
+        # Сетевые утилиты для диагностики
+        netcat-openbsd \
+        telnet \
+        net-tools \
+        iputils-ping \
+        # Утилиты для работы
+        curl \
+        vim \
+        htop && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    echo "✅ Дополнительные утилиты установлены"
+
+# 🗂️ Создаем необходимые директории если их нет
+RUN mkdir -p \
+        /var/lib/freeswitch/storage \
+        /var/lib/freeswitch/recordings \
+        /var/log/freeswitch \
+        /etc/freeswitch && \
+    echo "✅ Директории проверены"
+
+# 🔧 Копируем конфигурацию FreeSWITCH если есть
+# COPY ../../freeswitch/conf /usr/local/freeswitch/conf/
+
+# 📂 Рабочая директория
+WORKDIR /usr/local/freeswitch
+
+# 🔌 Открываем необходимые порты
+EXPOSE 5060/udp 5060/tcp 5080/udp 5080/tcp
+EXPOSE 16384-32768/udp
+EXPOSE 8021/tcp
+
+# 🏥 Добавляем healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD fs_cli -x "status" | grep -q "UP" || exit 1
+
+# 📝 Копируем entrypoint скрипт
+COPY docker-entrypoint-ready.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# 🚀 Точка входа
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["freeswitch", "-nonat", "-c"] 
