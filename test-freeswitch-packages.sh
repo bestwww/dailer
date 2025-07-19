@@ -20,44 +20,56 @@ cd docker/freeswitch
 echo "🔨 Собираем FreeSWITCH контейнер (готовые пакеты)..."
 echo "⏱️ Это займет 3-5 минут (вместо 30+ минут!)..."
 
-# Пробуем основной вариант с готовыми пакетами
-echo "📦 Попытка 1: Официальный репозиторий SignalWire..."
+# Пробуем официальный способ (полная версия)
+echo "📦 Попытка 1: Официальный метод - полная версия (freeswitch-meta-all)..."
 docker build -f Dockerfile-packages -t dailer-freeswitch:packages . 2>&1 | tee /tmp/freeswitch-packages-build.log
 BUILD_RESULT=${PIPESTATUS[0]}
 
 if [ $BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*packages"; then
-    echo "✅ Основной вариант собрался успешно!"
+    echo "✅ Официальная полная версия собралась успешно!"
     DOCKERFILE_USED="Dockerfile-packages"
     IMAGE_TAG="packages"
 else
-    echo "❌ Основной вариант не сработал (код выхода: $BUILD_RESULT), пробуем альтернативный..."
-    echo "📦 Попытка 2: Альтернативный способ (Ubuntu Universe)..."
-    docker build -f Dockerfile-alternative -t dailer-freeswitch:alternative . 2>&1 | tee /tmp/freeswitch-alternative-build.log
-    ALT_BUILD_RESULT=${PIPESTATUS[0]}
+    echo "❌ Полная версия не сработала (код выхода: $BUILD_RESULT), пробуем минимальную..."
+    echo "📦 Попытка 2: Официальный метод - минимальная версия (freeswitch-meta-vanilla)..."
+    docker build -f Dockerfile-minimal -t dailer-freeswitch:minimal . 2>&1 | tee /tmp/freeswitch-minimal-build.log
+    MIN_BUILD_RESULT=${PIPESTATUS[0]}
     
-    if [ $ALT_BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*alternative"; then
-        echo "✅ Альтернативный вариант собрался успешно!"
-        DOCKERFILE_USED="Dockerfile-alternative"
-        IMAGE_TAG="alternative"
+    if [ $MIN_BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*minimal"; then
+        echo "✅ Официальная минимальная версия собралась успешно!"
+        DOCKERFILE_USED="Dockerfile-minimal"
+        IMAGE_TAG="minimal"
     else
-        echo "❌ Альтернативный вариант тоже не сработал (код выхода: $ALT_BUILD_RESULT)"
-        echo "📦 Попытка 3: Базовый образ (без FreeSWITCH - для ручной установки)..."
-        docker build -f Dockerfile-base -t dailer-freeswitch:base . 2>&1 | tee /tmp/freeswitch-base-build.log
-        BASE_BUILD_RESULT=${PIPESTATUS[0]}
-        
-        if [ $BASE_BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*base"; then
-            echo "✅ Базовый образ собрался успешно!"
-            echo "⚠️ FreeSWITCH потребует ручной установки внутри контейнера"
-            DOCKERFILE_USED="Dockerfile-base"
-            IMAGE_TAG="base"
+        echo "❌ Минимальная версия тоже не сработала (код выхода: $MIN_BUILD_RESULT), пробуем альтернативный..."
+        echo "📦 Попытка 3: Альтернативный способ (Ubuntu Universe)..."
+        docker build -f Dockerfile-alternative -t dailer-freeswitch:alternative . 2>&1 | tee /tmp/freeswitch-alternative-build.log
+        ALT_BUILD_RESULT=${PIPESTATUS[0]}
+    
+        if [ $ALT_BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*alternative"; then
+            echo "✅ Альтернативный вариант собрался успешно!"
+            DOCKERFILE_USED="Dockerfile-alternative"
+            IMAGE_TAG="alternative"
         else
-            echo "❌ Все три варианта не сработали."
-            echo "📋 Коды выхода: основной=$BUILD_RESULT, альтернативный=$ALT_BUILD_RESULT, базовый=$BASE_BUILD_RESULT"
-            echo "📋 Проверьте логи:"
-            echo "   - /tmp/freeswitch-packages-build.log"
-            echo "   - /tmp/freeswitch-alternative-build.log"
-            echo "   - /tmp/freeswitch-base-build.log"
-            exit 1
+            echo "❌ Альтернативный вариант тоже не сработал (код выхода: $ALT_BUILD_RESULT)"
+            echo "📦 Попытка 4: Базовый образ (без FreeSWITCH - для ручной установки)..."
+            docker build -f Dockerfile-base -t dailer-freeswitch:base . 2>&1 | tee /tmp/freeswitch-base-build.log
+            BASE_BUILD_RESULT=${PIPESTATUS[0]}
+            
+            if [ $BASE_BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*base"; then
+                echo "✅ Базовый образ собрался успешно!"
+                echo "⚠️ FreeSWITCH потребует ручной установки внутри контейнера"
+                DOCKERFILE_USED="Dockerfile-base"
+                IMAGE_TAG="base"
+            else
+                echo "❌ Все четыре варианта не сработали."
+                echo "📋 Коды выхода: полная=$BUILD_RESULT, минимальная=$MIN_BUILD_RESULT, альтернативная=$ALT_BUILD_RESULT, базовая=$BASE_BUILD_RESULT"
+                echo "📋 Проверьте логи:"
+                echo "   - /tmp/freeswitch-packages-build.log"
+                echo "   - /tmp/freeswitch-minimal-build.log"
+                echo "   - /tmp/freeswitch-alternative-build.log"
+                echo "   - /tmp/freeswitch-base-build.log"
+                exit 1
+            fi
         fi
     fi
 fi
@@ -150,9 +162,18 @@ if [ $? -eq 0 ]; then
         echo "📊 Преимущества:"
         echo "   - ⚡ Быстрая сборка (3-5 минут вместо 30+)"
         echo "   - 🛡️ Стабильность (готовые пакеты)" 
-        echo "   - 📦 Меньший размер образа"
-        echo "   - 🔧 Проще обслуживать"
+        echo "   - 📦 Оптимизированный размер образа"
+        echo "   - 🔧 Простое обслуживание"
         echo "   - 🎯 Использованный метод: $DOCKERFILE_USED"
+        
+        # Дополнительная информация в зависимости от типа сборки
+        if [ "$IMAGE_TAG" = "packages" ]; then
+            echo "   - 📦 Полный набор модулей FreeSWITCH (meta-all)"
+        elif [ "$IMAGE_TAG" = "minimal" ]; then
+            echo "   - 📦 Минимальный набор модулей (meta-vanilla)"
+        elif [ "$IMAGE_TAG" = "alternative" ]; then
+            echo "   - 📦 Ubuntu Universe репозиторий"
+        fi
     fi
     
 else
