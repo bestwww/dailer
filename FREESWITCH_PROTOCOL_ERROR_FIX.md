@@ -64,12 +64,12 @@
 ### Ручное применение:
 ```bash
 # 1. Остановить FreeSWITCH
-docker-compose stop freeswitch
+docker compose stop freeswitch
 
 # 2. Применить изменения (уже сделано)
 
 # 3. Запустить FreeSWITCH
-docker-compose up -d freeswitch
+docker compose up -d freeswitch
 
 # 4. Проверить статус
 docker exec dialer_freeswitch fs_cli -x "status"

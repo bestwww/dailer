@@ -50,7 +50,7 @@ cd /path/to/dailer  # замените на правильный путь
 
 ### 3. Остановите сервисы:
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### 4. Получите обновления:
@@ -66,12 +66,12 @@ chmod +x *.sh
 
 ### 6. Запустите сервисы:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 7. Проверьте статус (через 30-45 секунд):
 ```bash
-docker-compose ps
+docker compose ps
 docker exec dialer_freeswitch fs_cli -x "status"
 ```
 
@@ -99,7 +99,7 @@ docker exec dialer_freeswitch fs_cli -x "originate sofia/gateway/sip_trunk/79206
 ### Проверка логов:
 ```bash
 # Все сервисы
-docker-compose logs -f
+docker compose logs -f
 
 # Только FreeSWITCH
 docker logs -f dialer_freeswitch
@@ -142,7 +142,7 @@ docker logs -f dialer_backend
 docker logs dialer_freeswitch
 
 # Перезапустить контейнер
-docker-compose restart freeswitch
+docker compose restart freeswitch
 
 # Применить исправления вручную
 ./fix-freeswitch-protocol-error.sh

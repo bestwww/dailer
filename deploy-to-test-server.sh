@@ -50,7 +50,7 @@ git log --oneline HEAD..origin/main | head -5 || echo "Нет новых ком�
 
 # 🔄 Останавливаем сервисы перед обновлением
 log_info "🔄 Останавливаем сервисы..."
-docker-compose down || true
+docker compose down || true
 
 # 📥 Применяем изменения
 log_info "📥 Применяем обновления..."
@@ -92,7 +92,7 @@ log_success "Права доступа настроены"
 # 🐳 Пересобираем образы если нужно
 log_info "🐳 Проверяем необходимость пересборки образов..."
 if [ -f "docker-compose.yml" ]; then
-    docker-compose build --pull
+    docker compose build --pull
     log_success "Образы обновлены"
 else
     log_warning "docker-compose.yml не найден, пропускаем пересборку"
@@ -100,7 +100,7 @@ fi
 
 # 🚀 Запускаем сервисы
 log_info "🚀 Запускаем обновленные сервисы..."
-docker-compose up -d
+docker compose up -d
 
 # ⏳ Ждем запуска
 log_info "⏳ Ожидаем запуска сервисов (45 секунд)..."
@@ -168,7 +168,7 @@ echo ""
 log_info "📝 Полезные команды для мониторинга:"
 echo ""
 echo "# Логи сервисов:"
-echo "docker-compose logs -f"
+echo "docker compose logs -f"
 echo ""
 echo "# Логи FreeSWITCH:"
 echo "docker logs -f dialer_freeswitch"
@@ -180,14 +180,14 @@ echo "# Тестовый звонок:"
 echo "docker exec dialer_freeswitch fs_cli -x 'originate sofia/gateway/sip_trunk/79206054020 &echo'"
 echo ""
 echo "# Статус контейнеров:"
-echo "docker-compose ps"
+echo "docker compose ps"
 echo ""
 
 log_success "🎉 Развертывание завершено успешно!"
 echo ""
 echo "🔧 Если возникли проблемы:"
-echo "  • Проверьте логи: docker-compose logs"
-echo "  • Перезапустите сервисы: docker-compose restart"
+echo "  • Проверьте логи: docker compose logs"
+echo "  • Перезапустите сервисы: docker compose restart"
 echo "  • Примените исправления: ./fix-freeswitch-protocol-error.sh"
 echo ""
 

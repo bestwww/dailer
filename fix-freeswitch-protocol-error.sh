@@ -34,7 +34,7 @@ log_success "Docker доступен"
 
 # 🔄 Останавливаем FreeSWITCH контейнер
 log_info "Останавливаем FreeSWITCH контейнер..."
-docker-compose stop freeswitch || true
+docker compose stop freeswitch || true
 
 # 📋 Показываем изменения
 log_info "📋 Сводка исправлений:"
@@ -56,7 +56,7 @@ echo ""
 
 # 🚀 Запускаем FreeSWITCH с новыми настройками
 log_info "Запускаем FreeSWITCH с исправленными настройками..."
-docker-compose up -d freeswitch
+docker compose up -d freeswitch
 
 # ⏳ Ждем запуска
 log_info "Ожидаем запуска FreeSWITCH (30 секунд)..."
