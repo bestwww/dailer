@@ -64,6 +64,8 @@ RUN apt-get update && apt-get install -y \
     # XML обработка
     libxml2-dev \
     libxslt1-dev \
+    # LDNS для mod_enum (DNS ENUM lookups)
+    libldns-dev \
     # Сетевые утилиты для диагностики
     netcat-openbsd \
     telnet \
@@ -152,7 +154,6 @@ RUN cd /usr/src && \
         --enable-mod-spandsp \
         --enable-mod-fax \
         --enable-mod-t38gateway \
-        --disable-mod-enum \
         --disable-libvpx \
         --without-java \
         --without-python && \
