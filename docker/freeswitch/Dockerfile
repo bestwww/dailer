@@ -150,6 +150,7 @@ RUN cd /usr/src && \
     sed -i '/mod_directory/s/^/#/' modules.conf && \
     sed -i '/mod_alsa/s/^/#/' modules.conf && \
     sed -i '/mod_portaudio/s/^/#/' modules.conf && \
+    sed -i '/mod_signalwire/s/^/#/' modules.conf && \
     echo "🔍 Проверяем что mod_verto отключен:" && \
     grep -n "verto" modules.conf || echo "mod_verto успешно отключен" && \
     echo "✅ Проблемные модули отключены в modules.conf" && \

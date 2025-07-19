@@ -13,18 +13,21 @@ configure: error: You need to either install libldns-dev or disable mod_enum in 
 configure: error: You need to either install libks2 or libks or disable mod_verto in modules.conf
 ```
 
+### 3. Ошибка libks/mod_signalwire (решена ✅)
+```
+configure: error: You need to either install libks2 or libks or disable mod_signalwire in modules.conf
+```
+
 ## ✅ Решения
 1. **Добавлены недостающие зависимости** в `docker/freeswitch/Dockerfile`:
    - `libldns-dev` - development-версия для сборки
    - `libldns3` - runtime-версия для работы
 
 2. **Отключены проблемные модули** в `modules.conf` (более надежный способ):
-   - `mod_verto` - требует libks
-   - `mod_v8` - требует V8 JavaScript engine
-   - `mod_java` - требует Java
-   - `mod_python` - требует Python dev
-   - `mod_enum` - требует libldns (дополнительно к установленной библиотеке)
-   - `mod_soundtouch`, `mod_av`, `mod_directory` - требуют дополнительные зависимости
+   - Используются универсальные sed команды: `/mod_name/s/^/#/`
+   - Комментируются все строки содержащие названия проблемных модулей
+   - Добавлена диагностика для проверки структуры `modules.conf`
+   - Модули: `mod_verto`, `mod_signalwire`, `mod_v8`, `mod_java`, `mod_python`, `mod_enum`, `mod_soundtouch`, `mod_av`, `mod_directory`, `mod_alsa`, `mod_portaudio`
 
 ## 🚀 Инструкции для тестирования на сервере
 
