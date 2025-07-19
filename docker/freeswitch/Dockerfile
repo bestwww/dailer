@@ -134,6 +134,18 @@ RUN cd /usr/src && \
     sed -i 's/AC_FUNC_MALLOC/AC_FUNC_MALLOC\nAC_USE_SYSTEM_EXTENSIONS/' configure.ac && \
     echo "🚀 Запускаем bootstrap..." && \
     ./bootstrap.sh -j && \
+    echo "⚙️ Отключаем проблемные модули в modules.conf..." && \
+    sed -i 's/^applications\/mod_verto/#applications\/mod_verto/' modules.conf && \
+    sed -i 's/^applications\/mod_v8/#applications\/mod_v8/' modules.conf && \
+    sed -i 's/^applications\/mod_java/#applications\/mod_java/' modules.conf && \
+    sed -i 's/^applications\/mod_python/#applications\/mod_python/' modules.conf && \
+    sed -i 's/^applications\/mod_enum/#applications\/mod_enum/' modules.conf && \
+    sed -i 's/^applications\/mod_soundtouch/#applications\/mod_soundtouch/' modules.conf && \
+    sed -i 's/^applications\/mod_av/#applications\/mod_av/' modules.conf && \
+    sed -i 's/^applications\/mod_directory/#applications\/mod_directory/' modules.conf && \
+    sed -i 's/^endpoints\/mod_alsa/#endpoints\/mod_alsa/' modules.conf && \
+    sed -i 's/^endpoints\/mod_portaudio/#endpoints\/mod_portaudio/' modules.conf && \
+    echo "✅ Проблемные модули отключены в modules.conf" && \
     echo "⚙️ Настраиваем конфигурацию (отключаем проблемные модули)..." && \
     echo "🔍 Проверяем SpanDSP..." && \
     pkg-config --exists spandsp && echo "✅ SpanDSP найден" || echo "⚠️ SpanDSP не найден" && \
@@ -158,17 +170,7 @@ RUN cd /usr/src && \
         --without-python \
         --disable-static \
         --enable-shared \
-        --disable-mod-enum \
-        --disable-mod-soundtouch \
-        --disable-mod-cdr-mongodb \
-        --disable-mod-av \
-        --disable-mod-directory \
-        --disable-mod-alsa \
-        --disable-mod-portaudio \
-        --disable-mod-verto \
-        --disable-mod-v8 \
-        --disable-mod-java \
-        --disable-mod-python && \
+        --disable-mod-cdr-mongodb && \
     echo "🔨 Компилируем FreeSWITCH (стабильная сборка)..." && \
     make -j$(nproc --ignore=2) && \
     echo "📦 Устанавливаем FreeSWITCH..." && \
