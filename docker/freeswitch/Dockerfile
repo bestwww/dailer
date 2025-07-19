@@ -64,6 +64,9 @@ RUN apt-get update && apt-get install -y \
     # XML обработка
     libxml2-dev \
     libxslt1-dev \
+    # DNS библиотеки (нужны для configure даже если mod_enum отключен)
+    libldns-dev \
+    libldns3 \
     # Сетевые утилиты для диагностики
     netcat-openbsd \
     telnet \
