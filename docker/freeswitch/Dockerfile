@@ -152,6 +152,7 @@ RUN cd /usr/src && \
         --enable-mod-spandsp \
         --enable-mod-fax \
         --enable-mod-t38gateway \
+        --disable-mod-enum \
         --disable-libvpx \
         --without-java \
         --without-python && \
