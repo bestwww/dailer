@@ -135,16 +135,23 @@ RUN cd /usr/src && \
     echo "🚀 Запускаем bootstrap..." && \
     ./bootstrap.sh -j && \
     echo "⚙️ Отключаем проблемные модули в modules.conf..." && \
-    sed -i 's/^applications\/mod_verto/#applications\/mod_verto/' modules.conf && \
-    sed -i 's/^applications\/mod_v8/#applications\/mod_v8/' modules.conf && \
-    sed -i 's/^applications\/mod_java/#applications\/mod_java/' modules.conf && \
-    sed -i 's/^applications\/mod_python/#applications\/mod_python/' modules.conf && \
-    sed -i 's/^applications\/mod_enum/#applications\/mod_enum/' modules.conf && \
-    sed -i 's/^applications\/mod_soundtouch/#applications\/mod_soundtouch/' modules.conf && \
-    sed -i 's/^applications\/mod_av/#applications\/mod_av/' modules.conf && \
-    sed -i 's/^applications\/mod_directory/#applications\/mod_directory/' modules.conf && \
-    sed -i 's/^endpoints\/mod_alsa/#endpoints\/mod_alsa/' modules.conf && \
-    sed -i 's/^endpoints\/mod_portaudio/#endpoints\/mod_portaudio/' modules.conf && \
+    echo "🔍 Проверяем структуру modules.conf:" && \
+    head -20 modules.conf && \
+    echo "🔍 Ищем mod_verto в modules.conf:" && \
+    grep -n "verto" modules.conf || echo "mod_verto не найден" && \
+    echo "🔧 Применяем более универсальные sed команды..." && \
+    sed -i '/mod_verto/s/^/#/' modules.conf && \
+    sed -i '/mod_v8/s/^/#/' modules.conf && \
+    sed -i '/mod_java/s/^/#/' modules.conf && \
+    sed -i '/mod_python/s/^/#/' modules.conf && \
+    sed -i '/mod_enum/s/^/#/' modules.conf && \
+    sed -i '/mod_soundtouch/s/^/#/' modules.conf && \
+    sed -i '/mod_av/s/^/#/' modules.conf && \
+    sed -i '/mod_directory/s/^/#/' modules.conf && \
+    sed -i '/mod_alsa/s/^/#/' modules.conf && \
+    sed -i '/mod_portaudio/s/^/#/' modules.conf && \
+    echo "🔍 Проверяем что mod_verto отключен:" && \
+    grep -n "verto" modules.conf || echo "mod_verto успешно отключен" && \
     echo "✅ Проблемные модули отключены в modules.conf" && \
     echo "⚙️ Настраиваем конфигурацию (отключаем проблемные модули)..." && \
     echo "🔍 Проверяем SpanDSP..." && \
