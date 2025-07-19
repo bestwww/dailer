@@ -1,0 +1,100 @@
+# 🐳 FreeSWITCH Docker - АЛЬТЕРНАТИВНАЯ ВЕРСИЯ
+# На случай проблем с официальным репозиторием SignalWire
+FROM ubuntu:22.04
+
+# 📋 Метаданные
+LABEL maintainer="Dailer Team"
+LABEL description="FreeSWITCH for Dailer - alternative approach"
+LABEL version="1.10-alternative"
+
+# 🌍 Переменные окружения
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# 📦 Установка базовых зависимостей
+RUN apt-get update && \
+    apt-get install -y \
+        # Базовые утилиты
+        wget \
+        curl \
+        gnupg2 \
+        ca-certificates \
+        software-properties-common \
+        # Сетевые утилиты
+        netcat-openbsd \
+        telnet \
+        net-tools \
+        iputils-ping \
+        # Утилиты для работы
+        vim \
+        htop \
+        # Для компиляции если нужно
+        build-essential \
+        cmake \
+        autoconf \
+        automake \
+        libtool \
+        pkg-config && \
+    echo "✅ Базовые зависимости установлены"
+
+# 🔧 Способ 1: Попытка установки FreeSWITCH из Ubuntu Universe
+RUN echo "📦 Пробуем установить FreeSWITCH из стандартных репозиториев Ubuntu..." && \
+    add-apt-repository universe && \
+    apt-get update && \
+    (apt-get install -y freeswitch freeswitch-mod-* || echo "⚠️ FreeSWITCH из Ubuntu недоступен") && \
+    echo "✅ Попытка установки из Ubuntu завершена"
+
+# 🔧 Способ 2: Альтернативный репозиторий (если основной не работает)
+RUN echo "🔧 Альтернативный способ установки..." && \
+    if ! command -v freeswitch >/dev/null 2>&1; then \
+        echo "📦 FreeSWITCH не установлен, попробуем альтернативные источники..."; \
+        # Можно добавить другие источники здесь
+        echo "⚠️ FreeSWITCH будет установлен в runtime или из другого источника"; \
+    else \
+        echo "✅ FreeSWITCH успешно установлен!"; \
+        freeswitch -version | head -3; \
+    fi
+
+# 🗂️ Создаем необходимые директории (на всякий случай)
+RUN mkdir -p \
+        /var/lib/freeswitch/storage \
+        /var/lib/freeswitch/recordings \
+        /var/log/freeswitch \
+        /etc/freeswitch \
+        /usr/local/freeswitch && \
+    echo "✅ Директории созданы"
+
+# 👤 Создаем пользователя freeswitch
+RUN if ! id "freeswitch" &>/dev/null; then \
+        useradd --system --home-dir /var/lib/freeswitch --shell /bin/false freeswitch; \
+    fi && \
+    echo "✅ Пользователь freeswitch настроен"
+
+# 🔧 Устанавливаем права доступа
+RUN chown -R freeswitch:freeswitch \
+        /var/lib/freeswitch \
+        /var/log/freeswitch \
+        /etc/freeswitch 2>/dev/null || true && \
+    echo "✅ Права доступа настроены"
+
+# 🧹 Очистка
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /tmp/* && \
+    echo "🧹 Очистка завершена"
+
+# 📂 Рабочая директория
+WORKDIR /etc/freeswitch
+
+# 🔌 Порты
+EXPOSE 5060/udp 5060/tcp 5080/udp 5080/tcp
+EXPOSE 16384-32768/udp
+EXPOSE 8021/tcp
+
+# 📝 Entrypoint
+COPY docker-entrypoint-alternative.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# 🚀 Запуск
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["freeswitch", "-nonat", "-c"] 

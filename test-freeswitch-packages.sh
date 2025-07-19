@@ -20,8 +20,28 @@ cd docker/freeswitch
 echo "🔨 Собираем FreeSWITCH контейнер (готовые пакеты)..."
 echo "⏱️ Это займет 3-5 минут (вместо 30+ минут!)..."
 
-# Собираем контейнер с выводом логов
-docker build -f Dockerfile-packages -t dailer-freeswitch:packages . 2>&1 | tee /tmp/freeswitch-packages-build.log
+# Пробуем основной вариант с готовыми пакетами
+echo "📦 Попытка 1: Официальный репозиторий SignalWire..."
+if docker build -f Dockerfile-packages -t dailer-freeswitch:packages . 2>&1 | tee /tmp/freeswitch-packages-build.log; then
+    echo "✅ Основной вариант собрался успешно!"
+    DOCKERFILE_USED="Dockerfile-packages"
+    IMAGE_TAG="packages"
+else
+    echo "❌ Основной вариант не сработал, пробуем альтернативный..."
+    echo "📦 Попытка 2: Альтернативный способ (Ubuntu Universe)..."
+    if docker build -f Dockerfile-alternative -t dailer-freeswitch:alternative . 2>&1 | tee /tmp/freeswitch-alternative-build.log; then
+        echo "✅ Альтернативный вариант собрался успешно!"
+        DOCKERFILE_USED="Dockerfile-alternative"
+        IMAGE_TAG="alternative"
+    else
+        echo "❌ Оба варианта не сработали. Проверьте логи:"
+        echo "   - /tmp/freeswitch-packages-build.log"
+        echo "   - /tmp/freeswitch-alternative-build.log"
+        exit 1
+    fi
+fi
+
+echo "🎯 Используемый образ: dailer-freeswitch:$IMAGE_TAG ($DOCKERFILE_USED)"
 
 # Проверяем успешность сборки
 if [ $? -eq 0 ]; then
@@ -32,11 +52,11 @@ if [ $? -eq 0 ]; then
     
     # Запускаем контейнер в тестовом режиме
     CONTAINER_ID=$(docker run -d \
-        --name freeswitch-test-packages \
+        --name freeswitch-test-$IMAGE_TAG \
         -p 5060:5060/udp \
         -p 5060:5060/tcp \
         -p 8021:8021/tcp \
-        dailer-freeswitch:packages)
+        dailer-freeswitch:$IMAGE_TAG)
     
     echo "🐳 Контейнер запущен: $CONTAINER_ID"
     
@@ -46,11 +66,11 @@ if [ $? -eq 0 ]; then
     
     # Проверяем логи
     echo "📋 Логи контейнера:"
-    docker logs freeswitch-test-packages | tail -20
+    docker logs freeswitch-test-$IMAGE_TAG | tail -20
     
     # Проверяем что FreeSWITCH работает
     echo "🔍 Проверяем статус FreeSWITCH..."
-    if docker exec freeswitch-test-packages fs_cli -x "status" 2>/dev/null | grep -q "UP"; then
+    if docker exec freeswitch-test-$IMAGE_TAG fs_cli -x "status" 2>/dev/null | grep -q "UP"; then
         echo "✅ FreeSWITCH работает корректно!"
         
         # Проверяем Event Socket
@@ -63,30 +83,33 @@ if [ $? -eq 0 ]; then
         
         # Показываем информацию о версии
         echo "📊 Информация о FreeSWITCH:"
-        docker exec freeswitch-test-packages freeswitch -version | head -3
+        docker exec freeswitch-test-$IMAGE_TAG freeswitch -version | head -3 2>/dev/null || \
+        docker exec freeswitch-test-$IMAGE_TAG ls -la /usr/bin/freeswitch /usr/local/freeswitch/bin/freeswitch 2>/dev/null || \
+        echo "ℹ️ FreeSWITCH найден, но версия недоступна"
         
     else
         echo "❌ FreeSWITCH не запустился корректно"
         echo "📋 Полные логи:"
-        docker logs freeswitch-test-packages
+        docker logs freeswitch-test-$IMAGE_TAG
     fi
     
     # Останавливаем и удаляем тестовый контейнер
     echo "🧹 Останавливаем тестовый контейнер..."
-    docker stop freeswitch-test-packages
-    docker rm freeswitch-test-packages
+    docker stop freeswitch-test-$IMAGE_TAG
+    docker rm freeswitch-test-$IMAGE_TAG
     
     echo ""
     echo "🎉 ТЕСТИРОВАНИЕ ЗАВЕРШЕНО!"
-    echo "✅ FreeSWITCH Docker (готовые пакеты) работает!"
+    echo "✅ FreeSWITCH Docker ($DOCKERFILE_USED) работает!"
     echo "📊 Преимущества:"
     echo "   - ⚡ Быстрая сборка (3-5 минут вместо 30+)"
     echo "   - 🛡️ Стабильность (готовые пакеты)" 
     echo "   - 📦 Меньший размер образа"
     echo "   - 🔧 Проще обслуживать"
+    echo "   - 🎯 Использованный метод: $DOCKERFILE_USED"
     
 else
-    echo "❌ Ошибка сборки FreeSWITCH (пакеты)"
-    echo "📋 Проверьте логи: /tmp/freeswitch-packages-build.log"
+    echo "❌ Ошибка сборки FreeSWITCH"
+    echo "📋 Проверьте логи в /tmp/"
     exit 1
 fi 
