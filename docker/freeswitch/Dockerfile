@@ -164,7 +164,11 @@ RUN cd /usr/src && \
         --disable-mod-av \
         --disable-mod-directory \
         --disable-mod-alsa \
-        --disable-mod-portaudio && \
+        --disable-mod-portaudio \
+        --disable-mod-verto \
+        --disable-mod-v8 \
+        --disable-mod-java \
+        --disable-mod-python && \
     echo "🔨 Компилируем FreeSWITCH (стабильная сборка)..." && \
     make -j$(nproc --ignore=2) && \
     echo "📦 Устанавливаем FreeSWITCH..." && \
