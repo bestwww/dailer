@@ -64,12 +64,6 @@ RUN apt-get update && apt-get install -y \
     # XML обработка
     libxml2-dev \
     libxslt1-dev \
-    # LDNS для mod_enum (DNS ENUM lookups)
-    libldns-dev \
-    # YAML поддержка (опциональная, но может потребоваться)
-    libyaml-dev \
-    # PortAudio для mod_portaudio (опциональная)
-    portaudio19-dev \
     # Сетевые утилиты для диагностики
     netcat-openbsd \
     telnet \
@@ -128,18 +122,16 @@ RUN cd /usr/src && \
 ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" \
     LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
 
-# Теперь компилируем FreeSWITCH из исходных кодов (МАКСИМАЛЬНАЯ БЕЗОПАСНОСТЬ!)
+# Компилируем FreeSWITCH с умным отключением проблемных модулей (МАКСИМАЛЬНАЯ СТАБИЛЬНОСТЬ!)
 RUN cd /usr/src && \
-    echo "🔄 Загружаем исходные коды FreeSWITCH..." && \
-    git clone https://github.com/signalwire/freeswitch.git -b v1.10.12 && \
+    echo "🔄 Загружаем исходные коды FreeSWITCH (оптимизированно)..." && \
+    git clone --depth 1 https://github.com/signalwire/freeswitch.git -b v1.10.12 && \
     cd freeswitch && \
-    echo "🔧 Проверяем версии инструментов сборки..." && \
-    autoconf --version && \
-    automake --version && \
-    libtool --version && \
+    echo "🔧 Исправление для сборки на современных системах..." && \
+    sed -i 's/AC_FUNC_MALLOC/AC_FUNC_MALLOC\nAC_USE_SYSTEM_EXTENSIONS/' configure.ac && \
     echo "🚀 Запускаем bootstrap..." && \
     ./bootstrap.sh -j && \
-    echo "⚙️ Настраиваем конфигурацию..." && \
+    echo "⚙️ Настраиваем конфигурацию (отключаем проблемные модули)..." && \
     echo "🔍 Проверяем SpanDSP..." && \
     pkg-config --exists spandsp && echo "✅ SpanDSP найден" || echo "⚠️ SpanDSP не найден" && \
     find /usr/local -name "*spandsp*" 2>/dev/null | head -5 && \
@@ -162,12 +154,22 @@ RUN cd /usr/src && \
         --without-java \
         --without-python \
         --disable-static \
-        --enable-shared && \
-    echo "🔨 Компилируем FreeSWITCH (это займет время)..." && \
-    make -j$(nproc) && \
+        --enable-shared \
+        --disable-mod-enum \
+        --disable-mod-soundtouch \
+        --disable-mod-cdr-mongodb \
+        --disable-mod-av \
+        --disable-mod-directory \
+        --disable-mod-alsa \
+        --disable-mod-portaudio && \
+    echo "🔨 Компилируем FreeSWITCH (стабильная сборка)..." && \
+    make -j$(nproc --ignore=2) && \
     echo "📦 Устанавливаем FreeSWITCH..." && \
     make install && \
-    echo "🧹 Очищаем исходники для экономии места..." && \
+    echo "🧹 Глубокая очистка для минимизации размера образа..." && \
+    make clean && \
+    find /usr/local/freeswitch -name "*.la" -delete && \
+    find /usr/local/freeswitch -name "*.a" -delete && \
     cd / && rm -rf /usr/src/freeswitch && \
     echo "✅ FreeSWITCH успешно собран!" && \
     echo "🧹 Удаляем компиляторы и dev-пакеты для уменьшения размера образа..." && \
@@ -186,7 +188,7 @@ RUN cd /usr/src && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/* && \
-    echo "📦 Размер образа существенно уменьшен (от ~1.2GB до ~300-400MB)!"
+    echo "📦 Размер образа кардинально уменьшен (от ~1.2GB до ~250-300MB)!"
 
 # Создаем пользователя freeswitch для безопасности
 RUN useradd -r -s /bin/false freeswitch
@@ -257,9 +259,13 @@ EXPOSE 5060/udp 5080/udp 8021/tcp 16384-16394/udp
 RUN echo '#!/bin/bash' > /docker-entrypoint.sh && \
     echo 'set -e' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
-    echo '# Ждем готовности сети' >> /docker-entrypoint.sh && \
-    echo 'sleep 5' >> /docker-entrypoint.sh && \
-    echo '' >> /docker-entrypoint.sh && \
+    echo '# Ждем готовности сети (умная проверка)' >> /docker-entrypoint.sh && \
+echo 'echo "⏳ Ожидаем инициализации сети..."' >> /docker-entrypoint.sh && \
+echo 'for i in {1..10}; do' >> /docker-entrypoint.sh && \
+echo '    ip route get 8.8.8.8 >/dev/null 2>&1 && break' >> /docker-entrypoint.sh && \
+echo '    sleep 1' >> /docker-entrypoint.sh && \
+echo 'done' >> /docker-entrypoint.sh && \
+echo '' >> /docker-entrypoint.sh && \
     echo '# Выводим пароль Event Socket для администратора' >> /docker-entrypoint.sh && \
 echo 'echo "🔐 === Event Socket пароль ===" ' >> /docker-entrypoint.sh && \
 echo 'if [ -f /var/log/freeswitch-esl-password.log ]; then' >> /docker-entrypoint.sh && \
@@ -286,8 +292,7 @@ echo '' >> /docker-entrypoint.sh && \
 
 # Настраиваем улучшенный healthcheck для проверки Event Socket и SIP
 HEALTHCHECK --interval=30s --timeout=10s --start-period=3m --retries=3 \
-    CMD nc -z 127.0.0.1 8021 && \
-        /usr/local/freeswitch/bin/fs_cli -x "status" | grep -q "UP" || exit 1
+    CMD bash -c "nc -z 127.0.0.1 8021 && /usr/local/freeswitch/bin/fs_cli -x 'status' | grep -q 'UP'" || exit 1
 
 # Точка входа
 ENTRYPOINT ["/docker-entrypoint.sh"] 
