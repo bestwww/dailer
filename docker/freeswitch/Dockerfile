@@ -66,6 +66,10 @@ RUN apt-get update && apt-get install -y \
     libxslt1-dev \
     # LDNS для mod_enum (DNS ENUM lookups)
     libldns-dev \
+    # YAML поддержка (опциональная, но может потребоваться)
+    libyaml-dev \
+    # PortAudio для mod_portaudio (опциональная)
+    portaudio19-dev \
     # Сетевые утилиты для диагностики
     netcat-openbsd \
     telnet \
@@ -156,7 +160,9 @@ RUN cd /usr/src && \
         --enable-mod-t38gateway \
         --disable-libvpx \
         --without-java \
-        --without-python && \
+        --without-python \
+        --disable-static \
+        --enable-shared && \
     echo "🔨 Компилируем FreeSWITCH (это займет время)..." && \
     make -j$(nproc) && \
     echo "📦 Устанавливаем FreeSWITCH..." && \
