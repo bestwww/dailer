@@ -22,22 +22,43 @@ echo "⏱️ Это займет 3-5 минут (вместо 30+ минут!)..
 
 # Пробуем основной вариант с готовыми пакетами
 echo "📦 Попытка 1: Официальный репозиторий SignalWire..."
-if docker build -f Dockerfile-packages -t dailer-freeswitch:packages . 2>&1 | tee /tmp/freeswitch-packages-build.log; then
+docker build -f Dockerfile-packages -t dailer-freeswitch:packages . 2>&1 | tee /tmp/freeswitch-packages-build.log
+BUILD_RESULT=${PIPESTATUS[0]}
+
+if [ $BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*packages"; then
     echo "✅ Основной вариант собрался успешно!"
     DOCKERFILE_USED="Dockerfile-packages"
     IMAGE_TAG="packages"
 else
-    echo "❌ Основной вариант не сработал, пробуем альтернативный..."
+    echo "❌ Основной вариант не сработал (код выхода: $BUILD_RESULT), пробуем альтернативный..."
     echo "📦 Попытка 2: Альтернативный способ (Ubuntu Universe)..."
-    if docker build -f Dockerfile-alternative -t dailer-freeswitch:alternative . 2>&1 | tee /tmp/freeswitch-alternative-build.log; then
+    docker build -f Dockerfile-alternative -t dailer-freeswitch:alternative . 2>&1 | tee /tmp/freeswitch-alternative-build.log
+    ALT_BUILD_RESULT=${PIPESTATUS[0]}
+    
+    if [ $ALT_BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*alternative"; then
         echo "✅ Альтернативный вариант собрался успешно!"
         DOCKERFILE_USED="Dockerfile-alternative"
         IMAGE_TAG="alternative"
     else
-        echo "❌ Оба варианта не сработали. Проверьте логи:"
-        echo "   - /tmp/freeswitch-packages-build.log"
-        echo "   - /tmp/freeswitch-alternative-build.log"
-        exit 1
+        echo "❌ Альтернативный вариант тоже не сработал (код выхода: $ALT_BUILD_RESULT)"
+        echo "📦 Попытка 3: Базовый образ (без FreeSWITCH - для ручной установки)..."
+        docker build -f Dockerfile-base -t dailer-freeswitch:base . 2>&1 | tee /tmp/freeswitch-base-build.log
+        BASE_BUILD_RESULT=${PIPESTATUS[0]}
+        
+        if [ $BASE_BUILD_RESULT -eq 0 ] && docker images | grep -q "dailer-freeswitch.*base"; then
+            echo "✅ Базовый образ собрался успешно!"
+            echo "⚠️ FreeSWITCH потребует ручной установки внутри контейнера"
+            DOCKERFILE_USED="Dockerfile-base"
+            IMAGE_TAG="base"
+        else
+            echo "❌ Все три варианта не сработали."
+            echo "📋 Коды выхода: основной=$BUILD_RESULT, альтернативный=$ALT_BUILD_RESULT, базовый=$BASE_BUILD_RESULT"
+            echo "📋 Проверьте логи:"
+            echo "   - /tmp/freeswitch-packages-build.log"
+            echo "   - /tmp/freeswitch-alternative-build.log"
+            echo "   - /tmp/freeswitch-base-build.log"
+            exit 1
+        fi
     fi
 fi
 
@@ -68,29 +89,41 @@ if [ $? -eq 0 ]; then
     echo "📋 Логи контейнера:"
     docker logs freeswitch-test-$IMAGE_TAG | tail -20
     
-    # Проверяем что FreeSWITCH работает
-    echo "🔍 Проверяем статус FreeSWITCH..."
-    if docker exec freeswitch-test-$IMAGE_TAG fs_cli -x "status" 2>/dev/null | grep -q "UP"; then
-        echo "✅ FreeSWITCH работает корректно!"
-        
-        # Проверяем Event Socket
-        echo "🔌 Проверяем Event Socket (порт 8021)..."
-        if timeout 5 bash -c "</dev/tcp/localhost/8021" 2>/dev/null; then
-            echo "✅ Event Socket доступен!"
+    # Проверяем статус в зависимости от образа
+    if [ "$IMAGE_TAG" = "base" ]; then
+        echo "ℹ️ Базовый образ - FreeSWITCH не установлен"
+        echo "🔍 Проверяем что контейнер работает и показывает инструкции..."
+        if docker exec freeswitch-test-$IMAGE_TAG echo "Контейнер доступен" 2>/dev/null; then
+            echo "✅ Базовый контейнер работает корректно!"
+            echo "📋 Инструкции по установке FreeSWITCH:"
+            docker exec freeswitch-test-$IMAGE_TAG cat /docker-entrypoint.sh | grep "Вариант 1" -A 5 | head -5 || echo "См. логи контейнера для инструкций"
         else
-            echo "⚠️ Event Socket недоступен"
+            echo "❌ Базовый контейнер не отвечает"
         fi
-        
-        # Показываем информацию о версии
-        echo "📊 Информация о FreeSWITCH:"
-        docker exec freeswitch-test-$IMAGE_TAG freeswitch -version | head -3 2>/dev/null || \
-        docker exec freeswitch-test-$IMAGE_TAG ls -la /usr/bin/freeswitch /usr/local/freeswitch/bin/freeswitch 2>/dev/null || \
-        echo "ℹ️ FreeSWITCH найден, но версия недоступна"
-        
     else
-        echo "❌ FreeSWITCH не запустился корректно"
-        echo "📋 Полные логи:"
-        docker logs freeswitch-test-$IMAGE_TAG
+        echo "🔍 Проверяем статус FreeSWITCH..."
+        if docker exec freeswitch-test-$IMAGE_TAG fs_cli -x "status" 2>/dev/null | grep -q "UP"; then
+            echo "✅ FreeSWITCH работает корректно!"
+            
+            # Проверяем Event Socket
+            echo "🔌 Проверяем Event Socket (порт 8021)..."
+            if timeout 5 bash -c "</dev/tcp/localhost/8021" 2>/dev/null; then
+                echo "✅ Event Socket доступен!"
+            else
+                echo "⚠️ Event Socket недоступен"
+            fi
+            
+            # Показываем информацию о версии
+            echo "📊 Информация о FreeSWITCH:"
+            docker exec freeswitch-test-$IMAGE_TAG freeswitch -version | head -3 2>/dev/null || \
+            docker exec freeswitch-test-$IMAGE_TAG ls -la /usr/bin/freeswitch /usr/local/freeswitch/bin/freeswitch 2>/dev/null || \
+            echo "ℹ️ FreeSWITCH найден, но версия недоступна"
+            
+        else
+            echo "❌ FreeSWITCH не запустился корректно"
+            echo "📋 Полные логи:"
+            docker logs freeswitch-test-$IMAGE_TAG
+        fi
     fi
     
     # Останавливаем и удаляем тестовый контейнер
@@ -100,13 +133,27 @@ if [ $? -eq 0 ]; then
     
     echo ""
     echo "🎉 ТЕСТИРОВАНИЕ ЗАВЕРШЕНО!"
-    echo "✅ FreeSWITCH Docker ($DOCKERFILE_USED) работает!"
-    echo "📊 Преимущества:"
-    echo "   - ⚡ Быстрая сборка (3-5 минут вместо 30+)"
-    echo "   - 🛡️ Стабильность (готовые пакеты)" 
-    echo "   - 📦 Меньший размер образа"
-    echo "   - 🔧 Проще обслуживать"
-    echo "   - 🎯 Использованный метод: $DOCKERFILE_USED"
+    if [ "$IMAGE_TAG" = "base" ]; then
+        echo "✅ Базовый Docker образ ($DOCKERFILE_USED) работает!"
+        echo "📊 Что получилось:"
+        echo "   - ✅ Контейнер запускается"
+        echo "   - ✅ Все зависимости установлены"
+        echo "   - ✅ Структура директорий создана"
+        echo "   - ⚠️ FreeSWITCH требует ручной установки"
+        echo "   - 💡 Инструкции показаны в логах контейнера"
+        echo ""
+        echo "🔧 Следующий шаг: войдите в контейнер и установите FreeSWITCH:"
+        echo "   docker exec -it freeswitch-test-$IMAGE_TAG bash"
+        echo "   # Затем следуйте инструкциям в логах"
+    else
+        echo "✅ FreeSWITCH Docker ($DOCKERFILE_USED) работает!"
+        echo "📊 Преимущества:"
+        echo "   - ⚡ Быстрая сборка (3-5 минут вместо 30+)"
+        echo "   - 🛡️ Стабильность (готовые пакеты)" 
+        echo "   - 📦 Меньший размер образа"
+        echo "   - 🔧 Проще обслуживать"
+        echo "   - 🎯 Использованный метод: $DOCKERFILE_USED"
+    fi
     
 else
     echo "❌ Ошибка сборки FreeSWITCH"

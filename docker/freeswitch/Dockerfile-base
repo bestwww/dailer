@@ -1,0 +1,89 @@
+# 🐳 FreeSWITCH Docker - БАЗОВЫЙ ОБРАЗ  
+# Минимальный образ без FreeSWITCH для ручной установки
+FROM ubuntu:22.04
+
+# 📋 Метаданные
+LABEL maintainer="Dailer Team"
+LABEL description="Base image for FreeSWITCH - manual installation required"
+LABEL version="base"
+
+# 🌍 Переменные окружения
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# 📦 Установка всех необходимых зависимостей
+RUN apt-get update && \
+    apt-get install -y \
+        # Базовые утилиты
+        wget \
+        curl \
+        gnupg2 \
+        ca-certificates \
+        software-properties-common \
+        lsb-release \
+        # Сетевые утилиты для диагностики
+        netcat-openbsd \
+        telnet \
+        net-tools \
+        iputils-ping \
+        dnsutils \
+        # Утилиты для работы
+        vim \
+        nano \
+        htop \
+        tree \
+        # Аудио библиотеки (на всякий случай)
+        libasound2-dev \
+        libsndfile1-dev \
+        # Основные dev пакеты (если понадобится компиляция)
+        build-essential \
+        cmake \
+        autoconf \
+        automake \
+        libtool \
+        pkg-config \
+        git && \
+    echo "✅ Все зависимости установлены"
+
+# 🗂️ Создаем структуру директорий FreeSWITCH
+RUN mkdir -p \
+        /var/lib/freeswitch/storage \
+        /var/lib/freeswitch/recordings \
+        /var/lib/freeswitch/sounds \
+        /var/log/freeswitch \
+        /etc/freeswitch \
+        /usr/local/freeswitch/bin \
+        /usr/local/freeswitch/lib \
+        /usr/local/freeswitch/mod && \
+    echo "✅ Структура директорий создана"
+
+# 👤 Создаем пользователя freeswitch
+RUN useradd --system --home-dir /var/lib/freeswitch --shell /bin/false freeswitch && \
+    chown -R freeswitch:freeswitch \
+        /var/lib/freeswitch \
+        /var/log/freeswitch \
+        /etc/freeswitch \
+        /usr/local/freeswitch && \
+    echo "✅ Пользователь freeswitch создан"
+
+# 🧹 Очистка
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /tmp/* && \
+    echo "🧹 Очистка завершена"
+
+# 📂 Рабочая директория
+WORKDIR /etc/freeswitch
+
+# 🔌 Открываем необходимые порты
+EXPOSE 5060/udp 5060/tcp 5080/udp 5080/tcp
+EXPOSE 16384-32768/udp
+EXPOSE 8021/tcp
+
+# 📝 Информационный entrypoint
+COPY docker-entrypoint-base.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# 🚀 Запуск
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["bash"] 
