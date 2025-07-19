@@ -20,6 +20,7 @@ RUN apt-get update && \
         gnupg2 \
         ca-certificates \
         software-properties-common \
+        apt-transport-https \
         # Сетевые утилиты
         netcat-openbsd \
         telnet \
@@ -41,18 +42,29 @@ RUN apt-get update && \
 RUN echo "📦 Пробуем установить FreeSWITCH из стандартных репозиториев Ubuntu..." && \
     add-apt-repository universe && \
     apt-get update && \
-    (apt-get install -y freeswitch freeswitch-mod-* || echo "⚠️ FreeSWITCH из Ubuntu недоступен") && \
+    # Проверяем доступность пакета FreeSWITCH
+    if apt-cache search freeswitch | grep -q freeswitch; then \
+        echo "✅ FreeSWITCH найден в репозиториях Ubuntu"; \
+        apt-get install -y freeswitch || echo "⚠️ Установка FreeSWITCH не удалась"; \
+    else \
+        echo "⚠️ FreeSWITCH не найден в стандартных репозиториях Ubuntu"; \
+    fi && \
     echo "✅ Попытка установки из Ubuntu завершена"
 
-# 🔧 Способ 2: Альтернативный репозиторий (если основной не работает)
-RUN echo "🔧 Альтернативный способ установки..." && \
+# 🔧 Способ 2: Попытка использования публичного репозитория FreeSWITCH
+RUN echo "🔧 Если FreeSWITCH не установлен, пробуем публичный репозиторий..." && \
     if ! command -v freeswitch >/dev/null 2>&1; then \
-        echo "📦 FreeSWITCH не установлен, попробуем альтернативные источники..."; \
-        # Можно добавить другие источники здесь
-        echo "⚠️ FreeSWITCH будет установлен в runtime или из другого источника"; \
+        echo "📦 FreeSWITCH не установлен, добавляем публичный репозиторий FreeSWITCH..."; \
+        # Добавляем публичный репозиторий FreeSWITCH как fallback
+        (wget -O - https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc | apt-key add - && \
+         echo "deb http://files.freeswitch.org/repo/deb/debian-release/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/freeswitch.list && \
+         apt-get update && \
+         apt-get install -y freeswitch-meta-vanilla && \
+         echo "✅ FreeSWITCH установлен из публичного репозитория!") || \
+        echo "⚠️ Публичный репозиторий FreeSWITCH также недоступен"; \
     else \
-        echo "✅ FreeSWITCH успешно установлен!"; \
-        freeswitch -version | head -3; \
+        echo "✅ FreeSWITCH уже установлен!"; \
+        freeswitch -version | head -3 || echo "ℹ️ FreeSWITCH установлен, но version не отвечает"; \
     fi
 
 # 🗂️ Создаем необходимые директории (на всякий случай)

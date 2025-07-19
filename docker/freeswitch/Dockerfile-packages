@@ -31,13 +31,14 @@ RUN apt-get update && \
         htop && \
     echo "✅ Базовые зависимости установлены"
 
-# 🔑 Добавляем официальный ключ и репозиторий FreeSWITCH (ОФИЦИАЛЬНЫЙ СПОСОБ)
-RUN echo "🔑 Добавляем официальный репозиторий FreeSWITCH (строго по документации)..." && \
-    mkdir -p /usr/share/keyrings && \
-    wget -O /usr/share/keyrings/freeswitch-archive-keyring.gpg https://files.freeswitch.org/repo/deb/debian-release/freeswitch-archive-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/freeswitch-archive-keyring.gpg] https://files.freeswitch.org/repo/deb/debian-release/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/freeswitch.list && \
-    echo "deb-src [signed-by=/usr/share/keyrings/freeswitch-archive-keyring.gpg] https://files.freeswitch.org/repo/deb/debian-release/ $(lsb_release -sc) main" >> /etc/apt/sources.list.d/freeswitch.list && \
-    echo "✅ Репозиторий FreeSWITCH добавлен (официальный метод)"
+# 🔑 Добавляем публичный репозиторий FreeSWITCH (АКТУАЛЬНЫЙ СПОСОБ 2025)
+RUN echo "🔑 Добавляем публичный репозиторий FreeSWITCH (актуальный метод)..." && \
+    # Используем старый способ с apt-key как указано в актуальной документации
+    wget -O - https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc | apt-key add - && \
+    # HTTP вместо HTTPS для публичного репозитория (как в документации)
+    echo "deb http://files.freeswitch.org/repo/deb/debian-release/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/freeswitch.list && \
+    echo "deb-src http://files.freeswitch.org/repo/deb/debian-release/ $(lsb_release -sc) main" >> /etc/apt/sources.list.d/freeswitch.list && \
+    echo "✅ Публичный репозиторий FreeSWITCH добавлен (актуальный метод 2025)"
 
 # 📦 Обновляем список пакетов и устанавливаем FreeSWITCH (ОФИЦИАЛЬНЫЙ СПОСОБ)
 RUN echo "📦 Устанавливаем FreeSWITCH из официальных пакетов (по документации)..." && \
