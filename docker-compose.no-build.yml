@@ -1,0 +1,41 @@
+# Конфигурация для использования ГОТОВЫХ образов FreeSWITCH
+# БЕЗ сборки из исходников (для быстрого обновления)
+
+services:
+  # FreeSWITCH с готовым образом (без build!)
+  freeswitch:
+    # Используем готовый образ вместо сборки
+    image: signalwire/freeswitch:latest
+    container_name: dialer_freeswitch
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"    # SIP
+      - "5080:5080/udp"    # SIP альтернативный
+      - "8021:8021"        # ESL (Event Socket Library)
+      - "16384-16394:16384-16394/udp"  # RTP медиа
+    volumes:
+      - ./freeswitch/conf:/usr/local/freeswitch/conf
+      - freeswitch_logs:/usr/local/freeswitch/log
+      - freeswitch_sounds:/usr/local/freeswitch/sounds
+    networks:
+      - dialer_network
+    environment:
+      - DAEMON=false
+      - TZ=Europe/Moscow
+    command: ["freeswitch", "-nc", "-nonat"]
+    healthcheck:
+      test: ["CMD", "fs_cli", "-x", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Используем существующие тома и сети
+volumes:
+  postgres_data:
+  redis_data:
+  freeswitch_logs:
+  freeswitch_sounds:
+
+networks:
+  dialer_network:
+    driver: bridge 
