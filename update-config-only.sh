@@ -53,7 +53,7 @@ log_info "🔍 Ищем существующий контейнер FreeSWITCH..
 FREESWITCH_CONTAINER=""
 
 # Ищем контейнер по разным возможным именам
-for name in "dialer_freeswitch" "freeswitch" "dailer_freeswitch" "*freeswitch*"; do
+for name in "freeswitch-test" "dialer_freeswitch" "freeswitch" "dailer_freeswitch" "*freeswitch*"; do
     if docker ps -a --format "{{.Names}}" | grep -q "$name" 2>/dev/null; then
         FREESWITCH_CONTAINER="$name"
         log_success "Найден контейнер FreeSWITCH: $name"
