@@ -153,8 +153,8 @@ cat > freeswitch/conf/autoload_configs/sofia.conf.xml << 'EOF'
           <param name="from-domain" value="sip.beget.com"/>
           <param name="password" value="$external_sip_password"/>
           <param name="extension" value="79058615815"/>
-          <param name="proxy" value="sip.beget.com"/>
-          <param name="register-proxy" value="sip.beget.com"/>
+          <param name="proxy" value="62.141.121.197:5070"/>
+          <param name="register-proxy" value="62.141.121.197:5070"/>
           <param name="expire-seconds" value="600"/>
           <param name="register" value="true"/>
           <param name="retry-seconds" value="30"/>
@@ -168,7 +168,7 @@ cat > freeswitch/conf/autoload_configs/sofia.conf.xml << 'EOF'
         <param name="sip-trace" value="no"/>
         <param name="sip-capture" value="no"/>
         <param name="rfc2833-pt" value="101"/>
-        <param name="sip-port" value="5080"/>
+        <param name="sip-port" value="5060"/>
         <param name="dialplan" value="XML"/>
         <param name="context" value="public"/>
         <param name="dtmf-duration" value="2000"/>
@@ -495,8 +495,7 @@ echo ""
 echo "📋 Ваша архитектура: FreeSWITCH + Бэкенд на одном сервере"
 echo ""
 echo "✅ НУЖНО открыть наружу (для SIP провайдера):"
-echo "   🔌 5060/udp - входящие SIP звонки"
-echo "   🔌 5080/udp - исходящие SIP звонки"
+echo "   🔌 5060/udp - SIP трафик (входящие/исходящие)"
 echo ""
 echo "❌ НЕ нужно открывать (только внутренняя связь):"
 echo "   🔒 8021/tcp - ESL для связи с бэкендом"
@@ -506,8 +505,7 @@ echo ""
 echo "services:"
 echo "  freeswitch:"
 echo "    ports:"
-echo "      - \"5060:5060/udp\"  # SIP входящие"
-echo "      - \"5080:5080/udp\"  # SIP исходящие"
+echo "      - \"5060:5060/udp\"  # SIP трафик"
 echo "    networks:"
 echo "      - internal_network  # Для связи с бэкендом"
 echo ""
