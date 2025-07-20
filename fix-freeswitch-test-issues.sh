@@ -66,10 +66,10 @@ if [ -f "freeswitch/conf/vars.xml" ]; then
     log_info "Обновляем vars.xml..."
     cp freeswitch/conf/vars.xml freeswitch/conf/vars.xml.backup.$(date +%s)
     
-    # Обновляем все Caller ID переменные
-    sed -i '' "s/<X-PRE-PROCESS cmd=\"set\" data=\"default_caller_id_number=[^\"]*\"/<X-PRE-PROCESS cmd=\"set\" data=\"default_caller_id_number=$NEW_CALLER_ID\"/g" freeswitch/conf/vars.xml
-    sed -i '' "s/<X-PRE-PROCESS cmd=\"set\" data=\"outbound_caller_id_number=[^\"]*\"/<X-PRE-PROCESS cmd=\"set\" data=\"outbound_caller_id_number=$NEW_CALLER_ID\"/g" freeswitch/conf/vars.xml
-    sed -i '' "s/<X-PRE-PROCESS cmd=\"set\" data=\"emergency_caller_id_number=[^\"]*\"/<X-PRE-PROCESS cmd=\"set\" data=\"emergency_caller_id_number=$NEW_CALLER_ID\"/g" freeswitch/conf/vars.xml
+    # Обновляем все Caller ID переменные (Linux версия)
+    sed -i "s/<X-PRE-PROCESS cmd=\"set\" data=\"default_caller_id_number=[^\"]*\"/<X-PRE-PROCESS cmd=\"set\" data=\"default_caller_id_number=$NEW_CALLER_ID\"/g" freeswitch/conf/vars.xml
+    sed -i "s/<X-PRE-PROCESS cmd=\"set\" data=\"outbound_caller_id_number=[^\"]*\"/<X-PRE-PROCESS cmd=\"set\" data=\"outbound_caller_id_number=$NEW_CALLER_ID\"/g" freeswitch/conf/vars.xml
+    sed -i "s/<X-PRE-PROCESS cmd=\"set\" data=\"emergency_caller_id_number=[^\"]*\"/<X-PRE-PROCESS cmd=\"set\" data=\"emergency_caller_id_number=$NEW_CALLER_ID\"/g" freeswitch/conf/vars.xml
     
     log_success "vars.xml обновлен"
 else
@@ -81,9 +81,9 @@ if [ -f "freeswitch/conf/dialplan/default.xml" ]; then
     log_info "Обновляем dialplan/default.xml..."
     cp freeswitch/conf/dialplan/default.xml freeswitch/conf/dialplan/default.xml.backup.$(date +%s)
     
-    # Обновляем Caller ID в dialplan
-    sed -i '' "s/caller_id_number=\"[^\"]*\"/caller_id_number=\"$NEW_CALLER_ID\"/g" freeswitch/conf/dialplan/default.xml
-    sed -i '' "s/effective_caller_id_number=[^,}]*/effective_caller_id_number=$NEW_CALLER_ID/g" freeswitch/conf/dialplan/default.xml
+    # Обновляем Caller ID в dialplan (Linux версия)
+    sed -i "s/caller_id_number=\"[^\"]*\"/caller_id_number=\"$NEW_CALLER_ID\"/g" freeswitch/conf/dialplan/default.xml
+    sed -i "s/effective_caller_id_number=[^,}]*/effective_caller_id_number=$NEW_CALLER_ID/g" freeswitch/conf/dialplan/default.xml
     
     log_success "dialplan обновлен"
 fi
@@ -207,63 +207,192 @@ if [ -f "freeswitch/conf/dialplan/default.xml" ]; then
     cp freeswitch/conf/dialplan/default.xml freeswitch/conf/dialplan/default.xml.backup.$(date +%s)
 fi
 
-# Создаем новый dialplan
-cat > freeswitch/conf/dialplan/default.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<include>
-  <context name="default">
+ # Создаем новый dialplan с IVR меню
+ cat > freeswitch/conf/dialplan/default.xml << 'EOF'
+ <?xml version="1.0" encoding="utf-8"?>
+ <include>
+   <context name="default">
+     
+     <!-- Исходящие звонки от бэкенда с IVR меню -->
+     <extension name="outbound_calls_with_ivr">
+       <condition field="destination_number" expression="^(\d{10,11})$">
+         <action application="set" data="caller_id_number=79058615815"/>
+         <action application="set" data="caller_id_name=Dailer System"/>
+         <action application="set" data="effective_caller_id_number=79058615815"/>
+         <action application="set" data="effective_caller_id_name=Dailer System"/>
+         <action application="set" data="call_timeout=30"/>
+         <action application="set" data="hangup_after_bridge=true"/>
+         <action application="bridge" data="sofia/gateway/sip_trunk/$1"/>
+         <!-- Если звонок отвечен, переводим на IVR -->
+         <action application="transfer" data="ivr_menu XML default"/>
+       </condition>
+     </extension>
+     
+     <!-- Исходящие звонки с международным форматом -->
+     <extension name="outbound_international">
+       <condition field="destination_number" expression="^(\+\d{10,15})$">
+         <action application="set" data="caller_id_number=79058615815"/>
+         <action application="set" data="caller_id_name=Dailer System"/>
+         <action application="bridge" data="sofia/gateway/sip_trunk/$1"/>
+         <action application="transfer" data="ivr_menu XML default"/>
+       </condition>
+     </extension>
+     
+     <!-- IVR Меню -->
+     <extension name="ivr_menu">
+       <condition field="destination_number" expression="^ivr_menu$">
+         <action application="answer"/>
+         <action application="sleep" data="1000"/>
+         <action application="set" data="playback_terminators=#"/>
+         <action application="playback" data="silence_stream://1000"/>
+         
+         <!-- Основное IVR меню -->
+         <action application="lua" data="ivr_menu.lua"/>
+         
+         <!-- Альтернативно простое меню без Lua -->
+         <!-- <action application="playback" data="ivr/ivr-welcome.wav"/>
+         <action application="playback" data="ivr/ivr-please_hold.wav"/>
+         <action application="sleep" data="2000"/>
+         <action application="hangup"/> -->
+       </condition>
+     </extension>
+     
+     <!-- Входящие звонки - направляем на IVR -->
+     <extension name="inbound_calls">
+       <condition field="destination_number" expression="^(79058615815)$">
+         <action application="set" data="domain_name=$${domain}"/>
+         <action application="transfer" data="ivr_menu XML default"/>
+       </condition>
+     </extension>
+     
+     <!-- Любые другие входящие звонки -->
+     <extension name="inbound_any">
+       <condition field="destination_number" expression="^(.*)$">
+         <action application="set" data="domain_name=$${domain}"/>
+         <action application="transfer" data="ivr_menu XML default"/>
+       </condition>
+     </extension>
+     
+     <!-- Echo тест -->
+     <extension name="echo_test">
+       <condition field="destination_number" expression="^9999$">
+         <action application="answer"/>
+         <action application="echo"/>
+       </condition>
+     </extension>
+     
+   </context>
+   
+   <!-- Публичный контекст для входящих звонков -->
+   <context name="public">
+     <extension name="inbound_public">
+       <condition field="destination_number" expression="^(.*)$">
+         <action application="set" data="domain_name=$${domain}"/>
+         <action application="transfer" data="ivr_menu XML default"/>
+       </condition>
+     </extension>
+   </context>
+   
+ </include>
+ EOF
+
+ log_success "Dialplan обновлен"
+
+# Создаем простой IVR скрипт
+log_info "Создаем IVR скрипт..."
+
+# Создаем директорию для scripts если не существует
+mkdir -p freeswitch/scripts
+
+# Создаем простой IVR скрипт на Lua
+cat > freeswitch/scripts/ivr_menu.lua << 'EOF'
+-- Simple IVR Menu for Dailer System
+-- Простое IVR меню для системы Dailer
+
+-- Получаем сессию
+session = session or {}
+
+-- Функция для проигрывания звука с ожиданием нажатия клавиши
+function play_and_get_digits(prompt, min_digits, max_digits, tries, timeout, terminators)
+    if session:ready() then
+        local digits = session:playAndGetDigits(min_digits, max_digits, tries, timeout, terminators, prompt, "", "")
+        return digits
+    end
+    return ""
+end
+
+-- Основная функция IVR
+function main()
+    if not session:ready() then
+        freeswitch.consoleLog("ERR", "Session not ready\n")
+        return
+    end
     
-    <!-- Исходящие звонки через SIP trunk -->
-    <extension name="outbound_calls">
-      <condition field="destination_number" expression="^(\d{10,11})$">
-        <action application="set" data="caller_id_number=79058615815"/>
-        <action application="set" data="caller_id_name=Dailer System"/>
-        <action application="set" data="effective_caller_id_number=79058615815"/>
-        <action application="set" data="effective_caller_id_name=Dailer System"/>
-        <action application="bridge" data="sofia/gateway/sip_trunk/$1"/>
-      </condition>
-    </extension>
+    -- Отвечаем на звонок если еще не отвечен
+    if not session:answered() then
+        session:answer()
+        session:sleep(1000)
+    end
     
-    <!-- Исходящие звонки с международным форматом -->
-    <extension name="outbound_international">
-      <condition field="destination_number" expression="^(\+\d{10,15})$">
-        <action application="set" data="caller_id_number=79058615815"/>
-        <action application="set" data="caller_id_name=Dailer System"/>
-        <action application="bridge" data="sofia/gateway/sip_trunk/$1"/>
-      </condition>
-    </extension>
+    freeswitch.consoleLog("INFO", "IVR Menu started\n")
     
-    <!-- Входящие звонки -->
-    <extension name="inbound_calls">
-      <condition field="destination_number" expression="^(79058615815)$">
-        <action application="set" data="domain_name=$${domain}"/>
-        <action application="answer"/>
-        <action application="sleep" data="1000"/>
-        <action application="playback" data="ivr/ivr-welcome.wav"/>
-        <action application="hangup"/>
-      </condition>
-    </extension>
+    -- Основное меню
+    local tries = 0
+    local max_tries = 3
     
-    <!-- Локальные вызовы -->
-    <extension name="local_extension">
-      <condition field="destination_number" expression="^(10[01][0-9])$">
-        <action application="bridge" data="user/$1@$${domain}"/>
-      </condition>
-    </extension>
+    while tries < max_tries do
+        -- Проигрываем приветствие и меню
+        session:streamFile("silence_stream://1000")
+        
+        -- Простое текстовое меню (можно заменить на аудиофайлы)
+        session:speak("Добро пожаловать в систему Дайлер. Нажмите 1 для продолжения, 2 для завершения, или 0 для связи с оператором.")
+        
+        -- Получаем выбор пользователя
+        local choice = play_and_get_digits("", 1, 1, 1, 5000, "#")
+        
+        freeswitch.consoleLog("INFO", "User choice: " .. choice .. "\n")
+        
+        if choice == "1" then
+            -- Вариант 1: Продолжить
+            session:speak("Спасибо за ваш выбор. Переводим вас на следующий этап.")
+            session:sleep(2000)
+            -- Здесь можно добавить логику передачи на другое меню или оператора
+            session:speak("Звонок завершается. До свидания.")
+            break
+            
+        elseif choice == "2" then
+            -- Вариант 2: Завершить
+            session:speak("Спасибо за обращение. До свидания.")
+            break
+            
+        elseif choice == "0" then
+            -- Вариант 0: Оператор
+            session:speak("Переводим вас на оператора. Пожалуйста, ожидайте.")
+            -- Здесь можно добавить перевод на оператора
+            session:sleep(3000)
+            session:speak("В настоящее время все операторы заняты. До свидания.")
+            break
+            
+        else
+            -- Неверный выбор
+            tries = tries + 1
+            if tries < max_tries then
+                session:speak("Неверный выбор. Попробуйте еще раз.")
+            else
+                session:speak("Превышено количество попыток. Звонок завершается.")
+            end
+        end
+    end
     
-    <!-- Echo тест -->
-    <extension name="echo_test">
-      <condition field="destination_number" expression="^9999$">
-        <action application="answer"/>
-        <action application="echo"/>
-      </condition>
-    </extension>
-    
-  </context>
-</include>
+    freeswitch.consoleLog("INFO", "IVR Menu ended\n")
+    session:hangup()
+end
+
+-- Запускаем основную функцию
+main()
 EOF
 
-log_success "Dialplan обновлен"
+log_success "IVR скрипт создан"
 
 # 🔧 ЭТАП 5: КОПИРОВАНИЕ В КОНТЕЙНЕР
 echo ""
@@ -278,6 +407,16 @@ if docker cp freeswitch/conf/. "$CONTAINER_NAME:/usr/local/freeswitch/conf/"; th
 else
     log_error "Ошибка копирования конфигурации"
     exit 1
+fi
+
+# Копируем IVR скрипты в контейнер
+if [ -d "freeswitch/scripts" ]; then
+    log_info "Копируем IVR скрипты..."
+    if docker cp freeswitch/scripts/. "$CONTAINER_NAME:/usr/local/freeswitch/scripts/"; then
+        log_success "IVR скрипты скопированы"
+    else
+        log_warning "Ошибка копирования IVR скриптов"
+    fi
 fi
 
 # Применяем изменения
@@ -350,29 +489,38 @@ else
 fi
 
 echo ""
-echo "🎯 РЕКОМЕНДАЦИИ ПО ПОРТАМ"
-echo "========================="
+echo "🎯 РЕКОМЕНДАЦИИ ПО ПОРТАМ (ДЛЯ ВАШЕЙ АРХИТЕКТУРЫ)"
+echo "=================================================="
 echo ""
-echo "⚠️ ВАЖНО: Порты контейнера не открыты наружу!"
+echo "📋 Ваша архитектура: FreeSWITCH + Бэкенд на одном сервере"
 echo ""
-echo "💡 Для доступа снаружи нужно:"
+echo "✅ НУЖНО открыть наружу (для SIP провайдера):"
+echo "   🔌 5060/udp - входящие SIP звонки"
+echo "   🔌 5080/udp - исходящие SIP звонки"
 echo ""
-echo "1. Остановить контейнер:"
-echo "   docker stop $CONTAINER_NAME"
+echo "❌ НЕ нужно открывать (только внутренняя связь):"
+echo "   🔒 8021/tcp - ESL для связи с бэкендом"
 echo ""
-echo "2. Создать новый контейнер с открытыми портами:"
-echo "   docker run -d --name ${CONTAINER_NAME}_new \\"
-echo "     -p 5060:5060/udp \\"
-echo "     -p 5080:5080/udp \\"
-echo "     -p 8021:8021/tcp \\"
-echo "     -v \$(pwd)/freeswitch/conf:/usr/local/freeswitch/conf \\"
-echo "     dailer-freeswitch:ready"
+echo "💡 Рекомендуемая настройка docker-compose.yml:"
 echo ""
-echo "3. Или добавить порты в docker-compose.yml:"
-echo "   ports:"
-echo "     - \"5060:5060/udp\"  # SIP"
-echo "     - \"5080:5080/udp\"  # SIP External" 
-echo "     - \"8021:8021/tcp\"  # ESL"
+echo "services:"
+echo "  freeswitch:"
+echo "    ports:"
+echo "      - \"5060:5060/udp\"  # SIP входящие"
+echo "      - \"5080:5080/udp\"  # SIP исходящие"
+echo "    networks:"
+echo "      - internal_network  # Для связи с бэкендом"
+echo ""
+echo "  backend:"
+echo "    networks:"
+echo "      - internal_network  # Доступ к FreeSWITCH через ESL"
+echo ""
+echo "networks:"
+echo "  internal_network:"
+echo "    driver: bridge"
+echo ""
+echo "🔗 Бэкенд подключается к FreeSWITCH:"
+echo "   ESL: freeswitch:8021 (внутри Docker сети)"
 echo ""
 
 echo ""
@@ -388,11 +536,20 @@ echo ""
 echo "# Проверить SIP шлюзы:"
 echo "docker exec $CONTAINER_NAME fs_cli -x 'sofia status gateway'"
 echo ""
-echo "# Тест исходящего звонка:"
-echo "docker exec $CONTAINER_NAME fs_cli -x 'originate sofia/gateway/sip_trunk/79001234567 &echo'"
+echo "# Тест исходящего звонка с IVR:"
+echo "docker exec $CONTAINER_NAME fs_cli -x 'originate sofia/gateway/sip_trunk/79001234567 &transfer:ivr_menu'"
+echo ""
+echo "# Тест IVR меню напрямую:"
+echo "docker exec $CONTAINER_NAME fs_cli -x 'originate loopback/ivr_menu &echo'"
+echo ""
+echo "# Проверить dialplan:"
+echo "docker exec $CONTAINER_NAME fs_cli -x 'xml_locate dialplan'"
 echo ""
 echo "# Посмотреть логи:"
 echo "docker logs -f $CONTAINER_NAME"
+echo ""
+echo "# Подключиться к FreeSWITCH CLI для отладки:"
+echo "docker exec -it $CONTAINER_NAME fs_cli"
 echo ""
 
 echo ""
@@ -400,12 +557,20 @@ log_success "🎉 Исправление проблем завершено!"
 echo ""
 echo "📋 ЧТО ИСПРАВЛЕНО:"
 echo "   ✅ Caller ID обновлен на $NEW_CALLER_ID"
-echo "   ✅ SIP профиль external создан"
-echo "   ✅ Dialplan улучшен для обработки вызовов"
-echo "   ✅ Конфигурация применена"
+echo "   ✅ SIP профиль external создан для исходящих звонков"
+echo "   ✅ Dialplan с IVR меню для входящих и исходящих звонков"
+echo "   ✅ IVR скрипт на Lua с интерактивным меню"
+echo "   ✅ Публичный контекст для входящих звонков"
+echo "   ✅ Конфигурация применена без перезапуска"
+echo ""
+echo "📞 АРХИТЕКТУРА:"
+echo "   🎯 Исходящие звонки: Бэкенд → FreeSWITCH → SIP Trunk → IVR"
+echo "   📲 Входящие звонки: SIP Trunk → FreeSWITCH → IVR меню"
+echo "   🔗 Связь бэкенда: ESL через внутреннюю Docker сеть"
 echo ""
 echo "⚠️ ТРЕБУЕТ ВНИМАНИЯ:"
-echo "   🔌 Настроить открытие портов для внешнего доступа"
-echo "   🔐 Добавить пароль для SIP trunk в переменную external_sip_password"
+echo "   🔌 Открыть SIP порты наружу (5060, 5080) для провайдера"
+echo "   🔐 Добавить пароль SIP trunk в переменную external_sip_password"
+echo "   🎵 Заменить speak() на аудиофайлы для лучшего качества"
 echo ""
-echo "🚀 Контейнер готов к тестированию звонков!" 
+echo "🚀 Система готова для тестирования IVR меню и звонков!" 
