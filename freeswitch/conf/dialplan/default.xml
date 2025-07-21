@@ -7,6 +7,120 @@
 <include>
   <context name="default">
     
+    <!-- ТЕСТОВЫЕ ВНУТРЕННИЕ НОМЕРА ДЛЯ РАЗРАБОТКИ -->
+    
+    <!-- Тестовый номер 1204 - имитация ответа человека -->
+    <extension name="test_internal_1204">
+      <condition field="destination_number" expression="^1204$">
+        
+        <!-- Логирование тестового звонка -->
+        <action application="log" data="INFO TEST CALL: Звонок на тестовый номер 1204 (имитация человека)"/>
+        
+        <!-- Имитируем задержку дозвона -->
+        <action application="ring_ready"/>
+        <action application="sleep" data="3000"/>
+        
+        <!-- Имитируем ответ -->
+        <action application="answer"/>
+        <action application="log" data="INFO TEST CALL: Тестовый номер 1204 ответил"/>
+        
+        <!-- Проигрываем приветственное сообщение -->
+        <action application="playback" data="tone_stream://%(2000,4000,440,480);loops=1"/>
+        <action application="sleep" data="1000"/>
+        
+        <!-- Имитируем нажатие клавиши "1" (интересно) -->
+        <action application="log" data="INFO TEST CALL: Имитируем DTMF ответ '1' (заинтересован)"/>
+        <action application="set" data="test_dtmf_response=1"/>
+        
+        <!-- Отправляем событие об успешном тестовом звонке -->
+        <action application="event" data="Event-Name=CUSTOM,Event-Subclass=dialer::test_call_success,Phone-Number=1204,DTMF-Response=1,Call-Result=interested,Test-Mode=true"/>
+        
+        <action application="playback" data="tone_stream://%(1000,500,600);loops=2"/>
+        <action application="sleep" data="2000"/>
+        <action application="hangup" data="NORMAL_CLEARING"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Тестовый номер 1205 - имитация автоответчика -->
+    <extension name="test_internal_1205">
+      <condition field="destination_number" expression="^1205$">
+        
+        <!-- Логирование тестового звонка -->
+        <action application="log" data="INFO TEST CALL: Звонок на тестовый номер 1205 (имитация автоответчика)"/>
+        
+        <!-- Имитируем задержку дозвона -->
+        <action application="ring_ready"/>
+        <action application="sleep" data="2000"/>
+        
+        <!-- Имитируем ответ автоответчика -->
+        <action application="answer"/>
+        <action application="log" data="INFO TEST CALL: Тестовый номер 1205 ответил (автоответчик)"/>
+        
+        <!-- Имитируем длинное приветствие автоответчика -->
+        <action application="playback" data="tone_stream://%(5000,1000,300,400,500);loops=1"/>
+        
+        <!-- Отправляем событие об обнаружении автоответчика -->
+        <action application="event" data="Event-Name=CUSTOM,Event-Subclass=dialer::test_call_machine,Phone-Number=1205,AMD-Result=machine,Call-Result=answering_machine,Test-Mode=true"/>
+        
+        <action application="sleep" data="1000"/>
+        <action application="hangup" data="NORMAL_CLEARING"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Тестовый номер 1206 - имитация недоступного номера -->
+    <extension name="test_internal_1206">
+      <condition field="destination_number" expression="^1206$">
+        
+        <!-- Логирование тестового звонка -->
+        <action application="log" data="INFO TEST CALL: Звонок на тестовый номер 1206 (имитация недоступного)"/>
+        
+        <!-- Имитируем недоступность -->
+        <action application="sleep" data="5000"/>
+        
+        <!-- Отправляем событие о недоступности -->
+        <action application="event" data="Event-Name=CUSTOM,Event-Subclass=dialer::test_call_failed,Phone-Number=1206,Hangup-Cause=NO_ANSWER,Call-Result=no_answer,Test-Mode=true"/>
+        
+        <action application="hangup" data="NO_ANSWER"/>
+        
+      </condition>
+    </extension>
+
+    <!-- Тестовый звонок на ваш реальный номер 79206054020 -->
+    <extension name="test_real_number_79206054020">
+      <condition field="destination_number" expression="^79206054020$">
+        
+        <!-- Логирование тестового звонка на реальный номер -->
+        <action application="log" data="INFO REAL CALL: Тестовый звонок на реальный номер 79206054020"/>
+        
+        <!-- ИСПРАВЛЕНО: Унифицированный Caller ID -->
+        <action application="set" data="effective_caller_id_name=Dailer_Test"/>
+        <action application="set" data="effective_caller_id_number=79058615815"/>
+        <action application="set" data="sip_from_user=79058615815"/>
+        <action application="set" data="sip_from_host=46.173.16.147"/>
+        
+        <!-- Устанавливаем переменные для тестового звонка -->
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="set" data="continue_on_fail=true"/>
+        <action application="set" data="call_timeout=30"/>
+        <action application="set" data="progress_timeout=6"/>
+        <action application="set" data="test_mode=true"/>
+        
+        <!-- Звоним через SIP транк -->
+        <action application="bridge" data="sofia/gateway/sip_trunk/79206054020"/>
+        
+        <!-- Обработка результата -->
+        <action application="log" data="WARNING REAL CALL: Звонок на 79206054020 завершен: ${hangup_cause}"/>
+        
+        <!-- Отправляем событие о результате реального звонка -->
+        <action application="event" data="Event-Name=CUSTOM,Event-Subclass=dialer::real_test_call,Phone-Number=79206054020,Hangup-Cause=${hangup_cause},Test-Mode=true"/>
+        
+        <action application="hangup" data="${hangup_cause}"/>
+        
+      </condition>
+    </extension>
+
     <!-- Маршрут для исходящих звонков автодозвона -->
     <extension name="autodialer_outbound" continue="false">
       <condition field="destination_number" expression="^autodialer_(\d+)$">
