@@ -68,6 +68,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: production
     image: dailer-backend:latest
     container_name: dialer_backend_ready
     depends_on:

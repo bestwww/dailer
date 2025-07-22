@@ -109,8 +109,10 @@ FROM development AS test
 # Установка всех зависимостей
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Создание директории тестов с placeholder файлом
-RUN mkdir -p ./tests/ && echo "describe('Placeholder', () => { test('should pass', () => { expect(true).toBe(true); }); });" > ./tests/placeholder.test.js
+# Создание директории тестов с правильными placeholder файлами
+RUN mkdir -p ./tests/ && \
+    echo "describe('Placeholder', () => { test('should pass', () => { expect(true).toBe(true); }); });" > ./tests/placeholder.test.ts && \
+    echo "// Jest setup file" > ./tests/setup.ts
 
 # Команда для тестов
 CMD ["npm", "test"] 
