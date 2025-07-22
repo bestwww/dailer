@@ -56,15 +56,14 @@ RUN mkdir -p \
         /tmp/asterisk && \
     echo "✅ Структура директорий создана"
 
-# 👤 Создаем пользователя asterisk
-RUN useradd --system --home-dir /var/lib/asterisk --shell /bin/false asterisk && \
-    chown -R asterisk:asterisk \
+# 👤 Настраиваем права доступа (пользователь asterisk уже создан пакетом)
+RUN chown -R asterisk:asterisk \
         /etc/asterisk \
         /var/lib/asterisk \
         /var/log/asterisk \
         /var/spool/asterisk \
         /usr/share/asterisk && \
-    echo "✅ Пользователь asterisk создан"
+    echo "✅ Права доступа настроены"
 
 # 🔧 Копируем базовую конфигурацию
 COPY conf/ /etc/asterisk/
