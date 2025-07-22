@@ -18,6 +18,8 @@
     "clean": "rimraf dist",
     "docker:build": "docker build -t dialer-backend .",
     "migrate": "tsx src/scripts/migrate.ts",
+    "test-asterisk": "tsx src/scripts/test-asterisk.ts",
+    "test-sip-trunk": "tsx src/scripts/test-sip-trunk.ts",
     "migrate:reset": "tsx src/scripts/reset-db.ts",
     "init-auth": "tsx src/scripts/init-auth.ts",
     "check-permissions": "tsx src/scripts/check-permissions.ts",
