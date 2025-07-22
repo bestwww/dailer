@@ -162,8 +162,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      freeswitch:
-        condition: service_started
+      # freeswitch:
+      #   condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
