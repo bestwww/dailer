@@ -40,13 +40,7 @@ export default defineConfig({
     // Увеличиваем лимит предупреждения до 1000 kB
     chunkSizeWarningLimit: 1000,
     
-    // Минификация кода
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Убираем console.log в production
-        drop_debugger: true // Убираем debugger в production
-      }
-    }
+    // Минификация кода (упрощенная конфигурация для совместимости)
+    minify: 'terser'
   }
 })
