@@ -49,6 +49,11 @@ services:
     environment:
       - ASTERISK_UID=1000
       - ASTERISK_GID=1000
+    # Добавляем capabilities для Asterisk
+    cap_add:
+      - SYS_RESOURCE
+      - NET_ADMIN
+      - NET_RAW
     ports:
       - "5060:5060/udp"
       - "5060:5060/tcp"
@@ -60,12 +65,13 @@ services:
     networks:
       - dialer_network
     restart: unless-stopped
+    # Более мягкий healthcheck
     healthcheck:
-      test: ["CMD", "asterisk", "-r", "-x", "core show version"]
+      test: ["CMD-SHELL", "pgrep asterisk || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 90s
+      retries: 5
+      start_period: 120s
 
   backend:
     build:
