@@ -168,6 +168,10 @@ docker compose build backend
 log "📦 Сборка frontend образа..."
 docker compose build frontend
 
+# ВРЕМЕННО ОТКЛЮЧЕНО: сборка FreeSWITCH
+# log "📦 Сборка FreeSWITCH образа..."
+# docker compose build freeswitch
+
 log "✅ Образы собраны"
 
 # ===============================

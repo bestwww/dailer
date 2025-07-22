@@ -41,34 +41,34 @@ services:
       timeout: 3s
       retries: 5
 
-  # FreeSWITCH (основной VoIP сервер)
-  freeswitch:
-    build: 
-      context: ./docker/freeswitch
-      dockerfile: Dockerfile
-    container_name: dialer_freeswitch
-    restart: unless-stopped
-    ports:
-      - "5060:5060/udp"    # SIP
-      - "5080:5080/udp"    # SIP альтернативный
-      - "8021:8021"        # ESL (Event Socket Library)
-      - "16384-16394:16384-16394/udp"  # RTP медиа
-    volumes:
-      - ./freeswitch/conf:/usr/local/freeswitch/conf
-      - freeswitch_logs:/usr/local/freeswitch/log
-      - freeswitch_sounds:/usr/local/freeswitch/sounds
-      - ./audio:/usr/local/freeswitch/sounds/audio
-    networks:
-      - dialer_network
-    environment:
-      - DAEMON=false
-      - TZ=Europe/Moscow
-    command: ["freeswitch", "-nc", "-nonat"]
-    healthcheck:
-      test: ["CMD", "fs_cli", "-x", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # FreeSWITCH (ВРЕМЕННО ОТКЛЮЧЕН для тестирования Asterisk)
+  # freeswitch:
+  #   build: 
+  #     context: ./docker/freeswitch
+  #     dockerfile: Dockerfile
+  #   container_name: dialer_freeswitch
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5060:5060/udp"    # SIP
+  #     - "5080:5080/udp"    # SIP альтернативный
+  #     - "8021:8021"        # ESL (Event Socket Library)
+  #     - "16384-16394:16384-16394/udp"  # RTP медиа
+  #   volumes:
+  #     - ./freeswitch/conf:/usr/local/freeswitch/conf
+  #     - freeswitch_logs:/usr/local/freeswitch/log
+  #     - freeswitch_sounds:/usr/local/freeswitch/sounds
+  #     - ./audio:/usr/local/freeswitch/sounds/audio
+  #   networks:
+  #     - dialer_network
+  #   environment:
+  #     - DAEMON=false
+  #     - TZ=Europe/Moscow
+  #   command: ["freeswitch", "-nc", "-nonat"]
+  #   healthcheck:
+  #     test: ["CMD", "fs_cli", "-x", "status"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
   # Asterisk (альтернативный VoIP сервер)
   asterisk:
@@ -202,10 +202,10 @@ volumes:
     driver: local
   redis_data:
     driver: local
-  freeswitch_logs:
-    driver: local
-  freeswitch_sounds:
-    driver: local
+  # freeswitch_logs:
+  #   driver: local
+  # freeswitch_sounds:
+  #   driver: local
   asterisk_logs:
     driver: local
   asterisk_lib:
