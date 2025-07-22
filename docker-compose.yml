@@ -98,14 +98,15 @@ services:
       - EXTERNAL_IP=${EXTERNAL_IP:-auto}
       - SIP_PROVIDER_HOST=62.141.121.197
       - SIP_PROVIDER_PORT=5070
+    command: ["asterisk", "-f", "-c"]
     healthcheck:
       test: ["CMD", "asterisk", "-rx", "core show version"]
       interval: 30s
       timeout: 10s
       retries: 3
-    # По умолчанию НЕ запускается (включается при VOIP_PROVIDER=asterisk)
-    profiles:
-      - asterisk
+    # Убираем profiles чтобы контейнер запускался по умолчанию
+    # profiles:
+    #   - asterisk
 
   # Backend Node.js
   backend:
@@ -127,7 +128,7 @@ services:
       - DATABASE_URL=postgresql://dialer_user:secure_password_123@postgres:5432/dialer_db
       - REDIS_URL=redis://:redis_password_123@redis:6379
       # VoIP Provider Configuration
-      - VOIP_PROVIDER=${VOIP_PROVIDER:-freeswitch}
+      - VOIP_PROVIDER=${VOIP_PROVIDER:-asterisk}
       # FreeSWITCH Configuration
       - FREESWITCH_HOST=freeswitch
       - FREESWITCH_PORT=8021
