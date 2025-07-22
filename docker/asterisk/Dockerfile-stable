@@ -131,6 +131,11 @@ COPY --from=builder /usr/lib/asterisk /usr/lib/asterisk
 COPY --from=builder /var/lib/asterisk /var/lib/asterisk
 COPY --from=builder /etc/asterisk /etc/asterisk
 
+# 📚 Копирование shared libraries (КРИТИЧНО!)
+RUN mkdir -p /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/libasterisk*.so* /usr/lib/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/ /usr/lib/x86_64-linux-gnu/
+
 # 📋 Копирование нашей минимальной конфигурации
 COPY conf-minimal/ /etc/asterisk/
 
