@@ -1,0 +1,152 @@
+# СТАБИЛЬНЫЙ ASTERISK 20.15.0 LTS - Multi-stage build
+FROM ubuntu:22.04 AS builder
+
+# Build-time переменные
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ASTERISK_VERSION=20.15.0
+
+# 📦 Установка только build зависимостей
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    autoconf \
+    automake \
+    libtool \
+    pkg-config \
+    libjansson-dev \
+    libxml2-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libedit-dev \
+    libncurses5-dev \
+    uuid-dev \
+    libcap-dev \
+    libcurl4-openssl-dev \
+    libnewt-dev \
+    libsrtp2-dev \
+    libgsm1-dev \
+    libspeex-dev \
+    libspeexdsp-dev \
+    zlib1g-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 📥 Скачивание и компиляция СТАБИЛЬНОГО Asterisk 20.15.0
+WORKDIR /usr/src
+RUN echo "📥 Скачивание СТАБИЛЬНОГО Asterisk 20.15.0..." && \
+    wget -q https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-20-current.tar.gz && \
+    tar -xzf asterisk-20-current.tar.gz && \
+    rm asterisk-20-current.tar.gz && \
+    cd asterisk-20* && \
+    echo "🔧 Конфигурация для СТАБИЛЬНОЙ работы..." && \
+    ./configure \
+        --with-jansson-bundled \
+        --with-pjproject-bundled \
+        --disable-xmldoc \
+        --enable-permanent-dlopen \
+        --without-asound \
+        --without-oss \
+        --without-gtk2 \
+        --without-qt \
+        --without-radius \
+        --without-h323 \
+        --without-unixodbc \
+        --without-neon \
+        --without-neon29 \
+        --without-lua \
+        --without-tds \
+        --without-postgres \
+        --without-mysql \
+        --without-bfd \
+        --without-ldap \
+        --without-dahdi \
+        --without-pri \
+        --without-ss7 \
+        --without-spandsp \
+        --without-portaudio \
+        --without-jack && \
+    echo "🏗️ Компиляция СТАБИЛЬНОЙ версии..." && \
+    make -j$(nproc) && \
+    echo "📦 Установка..." && \
+    make install && \
+    make samples && \
+    make config
+
+# ==========================================
+# PRODUCTION IMAGE - Минимальный размер
+# ==========================================
+FROM ubuntu:22.04 AS production
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ASTERISK_USER=asterisk
+ENV ASTERISK_GROUP=asterisk
+
+# 📦 Установка только runtime зависимостей
+RUN apt-get update && apt-get install -y \
+    # Только необходимые runtime библиотеки
+    libjansson4 \
+    libxml2 \
+    libsqlite3-0 \
+    libssl3 \
+    libedit2 \
+    libncurses6 \
+    uuid-runtime \
+    libcap2 \
+    libcurl4 \
+    libnewt0.52 \
+    libsrtp2-1 \
+    libgsm1 \
+    libspeex1 \
+    libspeexdsp1 \
+    zlib1g \
+    libffi8 \
+    # Системные утилиты
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 👤 Создание пользователя asterisk
+RUN groupadd -r $ASTERISK_GROUP && \
+    useradd -r -g $ASTERISK_GROUP -d /var/lib/asterisk -s /bin/bash $ASTERISK_USER
+
+# 📂 Создание директорий
+RUN mkdir -p \
+        /etc/asterisk \
+        /var/lib/asterisk \
+        /var/log/asterisk \
+        /var/spool/asterisk \
+        /var/run/asterisk \
+        /usr/share/asterisk && \
+    chown -R $ASTERISK_USER:$ASTERISK_GROUP \
+        /etc/asterisk \
+        /var/lib/asterisk \
+        /var/log/asterisk \
+        /var/spool/asterisk \
+        /var/run/asterisk \
+        /usr/share/asterisk
+
+# 📋 Копирование СТАБИЛЬНОГО Asterisk из builder stage
+COPY --from=builder /usr/sbin/asterisk /usr/sbin/asterisk
+COPY --from=builder /usr/lib/asterisk /usr/lib/asterisk
+COPY --from=builder /var/lib/asterisk /var/lib/asterisk
+COPY --from=builder /etc/asterisk /etc/asterisk
+
+# 📋 Копирование нашей минимальной конфигурации
+COPY conf-minimal/ /etc/asterisk/
+
+# 🔒 Исправление прав
+RUN chown -R $ASTERISK_USER:$ASTERISK_GROUP /etc/asterisk/ /var/lib/asterisk/ /var/log/asterisk/ /var/spool/asterisk/ /var/run/asterisk/
+
+# 🚀 Переключение на пользователя asterisk
+USER $ASTERISK_USER
+WORKDIR /var/lib/asterisk
+
+# 📡 Открытие портов
+EXPOSE 5060/udp 5060/tcp 5038/tcp 10000-20000/udp
+
+# 🎬 Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD asterisk -r -x "core show version" || exit 1
+
+# 🎯 Команда запуска
+CMD ["asterisk", "-f", "-c", "-vvv"] 

@@ -1,0 +1,131 @@
+name: dialer-stable
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dialer_postgres_stable
+    environment:
+      - POSTGRES_DB=dialer
+      - POSTGRES_USER=dialer
+      - POSTGRES_PASSWORD=dialer_pass_2025
+    volumes:
+      - postgres_data_stable:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - dialer_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dialer"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: dialer_redis_stable
+    volumes:
+      - redis_data_stable:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - dialer_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  asterisk:
+    build:
+      context: ./docker/asterisk
+      dockerfile: Dockerfile-stable
+    image: dailer-asterisk-stable:latest
+    container_name: dialer_asterisk_stable
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ASTERISK_UID=1000
+      - ASTERISK_GID=1000
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "5038:5038/tcp"
+      - "10000-10020:10000-10020/udp"
+    volumes:
+      - asterisk_config_stable:/etc/asterisk
+      - asterisk_logs_stable:/var/log/asterisk
+    networks:
+      - dialer_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "asterisk", "-r", "-x", "core show version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: dailer-backend:latest
+    container_name: dialer_backend_stable
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      asterisk:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=dialer
+      - DB_USER=dialer
+      - DB_PASSWORD=dialer_pass_2025
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - VOIP_PROVIDER=asterisk
+      - ASTERISK_HOST=asterisk
+      - ASTERISK_PORT=5038
+      - ASTERISK_USERNAME=admin
+      - ASTERISK_PASSWORD=dailer_admin_2025
+    ports:
+      - "3001:3001"
+    volumes:
+      - backend_uploads_stable:/app/uploads
+    networks:
+      - dialer_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: dailer-frontend:latest
+    container_name: dialer_frontend_stable
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - dialer_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data_stable:
+  redis_data_stable:
+  asterisk_config_stable:
+  asterisk_logs_stable:
+  backend_uploads_stable:
+
+networks:
+  dialer_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 
