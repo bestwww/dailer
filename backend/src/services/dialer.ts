@@ -3,7 +3,8 @@
  */
 
 import { EventEmitter } from 'events';
-import { freeswitchClient } from '@/services/freeswitch';
+import { getVoIPProvider } from '@/services/voip-provider-factory';
+import { VoIPProvider } from '@/services/voip-provider';
 import { campaignModel } from '@/models/campaign';
 import { contactModel } from '@/models/contact';
 import { callResultModel } from '@/models/call-result';
@@ -42,10 +43,15 @@ export class DialerService extends EventEmitter {
   private campaignIntervals: Map<number, NodeJS.Timeout> = new Map();
   private isRunning: boolean = false;
   private callsInLastMinute: Date[] = [];
+  private voipProvider: VoIPProvider;
 
   constructor() {
     super();
-    this.setupFreeSwitchEventHandlers();
+    // Инициализация VoIP провайдера (FreeSWITCH или Asterisk)
+    this.voipProvider = getVoIPProvider();
+    this.setupVoIPEventHandlers();
+    
+    log.info(`🎯 DialerService: Initialized with ${config.voipProvider.toUpperCase()} provider`);
   }
 
   /**
@@ -60,9 +66,10 @@ export class DialerService extends EventEmitter {
 
       log.info('🚀 Starting dialer service...');
 
-      // Проверка подключения к FreeSWITCH
-      if (!freeswitchClient.getConnectionStatus().connected) {
-        await freeswitchClient.connect();
+      // Проверка подключения к VoIP провайдеру
+      if (!this.voipProvider.isConnected()) {
+        log.info(`🔌 Connecting to ${config.voipProvider.toUpperCase()} provider...`);
+        await this.voipProvider.connect();
       }
 
       this.isRunning = true;
@@ -384,14 +391,14 @@ export class DialerService extends EventEmitter {
       );
       log.info(`✅ Contact ${contact.id} status updated to 'calling'`);
 
-      // Инициация звонка через FreeSWITCH
-      log.info(`📞 Calling freeswitchClient.makeCall for ${contact.phoneNumber}`);
-      const callUuid = await freeswitchClient.makeCall(
+      // Инициация звонка через VoIP провайдер (FreeSWITCH или Asterisk)
+      log.info(`📞 Calling ${config.voipProvider}.makeCall for ${contact.phoneNumber}`);
+      const callUuid = await this.voipProvider.makeCall(
         contact.phoneNumber,
         campaign.id,
         campaign.audioFilePath
       );
-      log.info(`✅ freeswitchClient.makeCall returned UUID: ${callUuid}`);
+      log.info(`✅ ${config.voipProvider}.makeCall returned UUID: ${callUuid}`);
 
       // Сохранение активного звонка
       log.info(`💾 Saving active call with UUID: ${callUuid}`);
@@ -443,15 +450,17 @@ export class DialerService extends EventEmitter {
   }
 
   /**
-   * Настройка обработчиков событий FreeSWITCH
+   * Настройка обработчиков событий VoIP провайдера (FreeSWITCH или Asterisk)
    */
-  private setupFreeSwitchEventHandlers(): void {
-    freeswitchClient.on('call:created', this.handleCallCreated.bind(this));
-    freeswitchClient.on('call:answered', this.handleCallAnswered.bind(this));
-    freeswitchClient.on('call:hangup', this.handleCallHangup.bind(this));
-    freeswitchClient.on('call:dtmf', this.handleCallDTMF.bind(this));
-    freeswitchClient.on('call:amd_result', this.handleAMDResult.bind(this));
-    freeswitchClient.on('lead:created', this.handleLeadCreatedEvent.bind(this));
+  private setupVoIPEventHandlers(): void {
+    this.voipProvider.on('call:created', this.handleCallCreated.bind(this));
+    this.voipProvider.on('call:answered', this.handleCallAnswered.bind(this));
+    this.voipProvider.on('call:hangup', this.handleCallHangup.bind(this));
+    this.voipProvider.on('call:dtmf', this.handleCallDTMF.bind(this));
+    this.voipProvider.on('call:amd_result', this.handleAMDResult.bind(this));
+    this.voipProvider.on('lead:created', this.handleLeadCreatedEvent.bind(this));
+    
+    log.info(`✅ DialerService: VoIP event handlers setup for ${config.voipProvider}`);
   }
 
   /**
@@ -708,7 +717,7 @@ export class DialerService extends EventEmitter {
 
       // Если обнаружен автоответчик, можно завершить звонок
       if (isAnsweringMachine && config.amdEnabled) {
-        await freeswitchClient.hangupCall(callUuid);
+        await this.voipProvider.hangupCall(callUuid);
       }
 
     } catch (error) {
@@ -780,7 +789,7 @@ export class DialerService extends EventEmitter {
     
     for (const callUuid of callUuids) {
       try {
-        await freeswitchClient.hangupCall(callUuid);
+        await this.voipProvider.hangupCall(callUuid);
       } catch (error) {
         log.warn(`Failed to hangup call ${callUuid}:`, error);
       }
@@ -798,7 +807,7 @@ export class DialerService extends EventEmitter {
     
     for (const [callUuid] of campaignCalls) {
       try {
-        await freeswitchClient.hangupCall(callUuid);
+        await this.voipProvider.hangupCall(callUuid);
       } catch (error) {
         log.warn(`Failed to hangup campaign call ${callUuid}:`, error);
       }
@@ -974,37 +983,41 @@ export class DialerService extends EventEmitter {
       const start = Date.now();
       const status = this.getStatus();
       
-      const isHealthy = status.isRunning && status.freeswitchConnected;
+      const isHealthy = status.isRunning && status.voipConnected;
       
       return {
         name: 'dialer',
         status: isHealthy ? 'healthy' : 'unhealthy',
-        message: isHealthy ? 'Диалер работает нормально' : 'Проблемы с диалером или FreeSWITCH',
+        message: isHealthy ? 'Диалер работает нормально' : `Проблемы с диалером или ${config.voipProvider.toUpperCase()}`,
         duration: Date.now() - start,
         timestamp: new Date(),
         details: {
           isRunning: status.isRunning,
-          freeswitchConnected: status.freeswitchConnected,
+          voipConnected: status.voipConnected,
+          voipProvider: config.voipProvider,
           activeCalls: status.activeCalls,
           activeCampaigns: status.activeCampaigns
         }
       };
     });
 
-    // Health check для FreeSWITCH подключения
-    monitoringService.registerHealthCheck('freeswitch', async () => {
+    // Health check для VoIP провайдера (FreeSWITCH или Asterisk)
+    monitoringService.registerHealthCheck('voip_provider', async () => {
       const start = Date.now();
-      const connectionStatus = freeswitchClient.getConnectionStatus();
+      const connectionStatus = this.voipProvider.getConnectionStatus();
       
       return {
-        name: 'freeswitch',
+        name: 'voip_provider',
         status: connectionStatus.connected ? 'healthy' : 'unhealthy',
         message: connectionStatus.connected 
-          ? 'FreeSWITCH подключен' 
-          : 'FreeSWITCH недоступен',
+          ? `${config.voipProvider.toUpperCase()} подключен` 
+          : `${config.voipProvider.toUpperCase()} недоступен`,
         duration: Date.now() - start,
         timestamp: new Date(),
-        details: connectionStatus
+        details: {
+          ...connectionStatus,
+          provider: config.voipProvider
+        }
       };
     });
   }
@@ -1053,13 +1066,15 @@ export class DialerService extends EventEmitter {
     isRunning: boolean;
     activeCalls: number;
     activeCampaigns: number;
-    freeswitchConnected: boolean;
+    voipConnected: boolean;
+    voipProvider: string;
   } {
     return {
       isRunning: this.isRunning,
       activeCalls: this.activeCalls.size,
       activeCampaigns: this.campaignIntervals.size,
-      freeswitchConnected: freeswitchClient.getConnectionStatus().connected,
+      voipConnected: this.voipProvider.isConnected(),
+      voipProvider: config.voipProvider,
     };
   }
 

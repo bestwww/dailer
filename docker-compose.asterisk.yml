@@ -1,0 +1,25 @@
+# Docker Compose для режима Asterisk
+# Запуск: docker-compose -f docker-compose.yml -f docker-compose.asterisk.yml up
+# Или с переменной: VOIP_PROVIDER=asterisk docker-compose --profile asterisk up
+
+services:
+  # Переопределение backend для работы с Asterisk
+  backend:
+    environment:
+      - VOIP_PROVIDER=asterisk
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      asterisk:
+        condition: service_started
+
+  # Активация Asterisk профиля
+  asterisk:
+    profiles: []  # Убираем профиль чтобы сервис запускался
+
+  # Отключение FreeSWITCH в Asterisk режиме
+  freeswitch:
+    profiles:
+      - freeswitch-only 

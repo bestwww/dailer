@@ -29,6 +29,10 @@ const configSchema = Joi.object({
   REDIS_URL: Joi.string().required()
     .description('Redis connection string'),
 
+  // VoIP Provider (FreeSWITCH or Asterisk)
+  VOIP_PROVIDER: Joi.string().valid('freeswitch', 'asterisk').default('freeswitch')
+    .description('VoIP provider to use (freeswitch or asterisk)'),
+
   // FreeSWITCH
   FREESWITCH_HOST: Joi.string().default('localhost')
     .description('FreeSWITCH server hostname'),
@@ -36,6 +40,16 @@ const configSchema = Joi.object({
     .description('FreeSWITCH ESL port'),
   FREESWITCH_PASSWORD: Joi.string().default('ClueCon')
     .description('FreeSWITCH ESL password'),
+
+  // Asterisk
+  ASTERISK_HOST: Joi.string().default('localhost')
+    .description('Asterisk server hostname'),
+  ASTERISK_PORT: Joi.number().default(5038)
+    .description('Asterisk AMI port'),
+  ASTERISK_USERNAME: Joi.string().default('admin')
+    .description('Asterisk AMI username'),
+  ASTERISK_PASSWORD: Joi.string().default('admin')
+    .description('Asterisk AMI password'),
 
   // JWT
   JWT_SECRET: Joi.string().min(32).required()
@@ -123,10 +137,19 @@ export const config: AppConfig = {
   // Redis
   redisUrl: envVars.REDIS_URL,
 
+  // VoIP Provider
+  voipProvider: envVars.VOIP_PROVIDER,
+
   // FreeSWITCH
   freeswitchHost: envVars.FREESWITCH_HOST,
   freeswitchPort: envVars.FREESWITCH_PORT,
   freeswitchPassword: envVars.FREESWITCH_PASSWORD,
+
+  // Asterisk
+  asteriskHost: envVars.ASTERISK_HOST,
+  asteriskPort: envVars.ASTERISK_PORT,
+  asteriskUsername: envVars.ASTERISK_USERNAME,
+  asteriskPassword: envVars.ASTERISK_PASSWORD,
 
   // JWT
   jwtSecret: envVars.JWT_SECRET,
@@ -224,7 +247,9 @@ export function logConfigInfo(): void {
   console.log('\n🔧 Application Configuration:');
   console.log(`   Environment: ${nodeEnv}`);
   console.log(`   Port: ${port}`);
+  console.log(`   VoIP Provider: ${config.voipProvider.toUpperCase()} ${config.voipProvider === 'freeswitch' ? '🔥' : '🆕'}`);
   console.log(`   FreeSWITCH: ${freeswitchHost}:${freeswitchPort}`);
+  console.log(`   Asterisk: ${config.asteriskHost}:${config.asteriskPort} (${config.asteriskUsername})`);
   console.log(`   Max Concurrent Calls: ${maxConcurrentCalls}`);
   console.log(`   Calls Per Minute: ${config.callsPerMinute}`);
   console.log(`   AMD Enabled: ${config.amdEnabled ? '✅' : '❌'}`);

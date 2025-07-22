@@ -41,7 +41,7 @@ services:
       timeout: 3s
       retries: 5
 
-  # FreeSWITCH (собственный безопасный образ)
+  # FreeSWITCH (основной VoIP сервер)
   freeswitch:
     build: 
       context: ./docker/freeswitch
@@ -57,6 +57,7 @@ services:
       - ./freeswitch/conf:/usr/local/freeswitch/conf
       - freeswitch_logs:/usr/local/freeswitch/log
       - freeswitch_sounds:/usr/local/freeswitch/sounds
+      - ./audio:/usr/local/freeswitch/sounds/audio
     networks:
       - dialer_network
     environment:
@@ -68,6 +69,43 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Asterisk (альтернативный VoIP сервер)
+  asterisk:
+    build:
+      context: ./docker/asterisk
+      dockerfile: Dockerfile
+    container_name: dialer_asterisk
+    restart: unless-stopped
+    ports:
+      - "5061:5060/udp"    # SIP (другой порт чтобы не конфликтовать)
+      - "5061:5060/tcp"    # SIP TCP
+      - "5038:5038"        # AMI (Asterisk Manager Interface)
+      - "8088:8088"        # ARI (Asterisk REST Interface)
+      - "10000-10020:10000-10020/udp"  # RTP медиа
+    volumes:
+      - ./docker/asterisk/conf:/etc/asterisk
+      - asterisk_logs:/var/log/asterisk
+      - asterisk_lib:/var/lib/asterisk
+      - asterisk_spool:/var/spool/asterisk
+      - ./audio:/var/lib/asterisk/sounds/audio
+    networks:
+      - dialer_network
+    environment:
+      - TZ=Europe/Moscow
+      - ASTERISK_UID=1000
+      - ASTERISK_GID=1000
+      - EXTERNAL_IP=${EXTERNAL_IP:-auto}
+      - SIP_PROVIDER_HOST=62.141.121.197
+      - SIP_PROVIDER_PORT=5070
+    healthcheck:
+      test: ["CMD", "asterisk", "-rx", "core show version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # По умолчанию НЕ запускается (включается при VOIP_PROVIDER=asterisk)
+    profiles:
+      - asterisk
 
   # Backend Node.js
   backend:
@@ -88,19 +126,28 @@ services:
       - PORT=3000
       - DATABASE_URL=postgresql://dialer_user:secure_password_123@postgres:5432/dialer_db
       - REDIS_URL=redis://:redis_password_123@redis:6379
+      # VoIP Provider Configuration
+      - VOIP_PROVIDER=${VOIP_PROVIDER:-freeswitch}
+      # FreeSWITCH Configuration
       - FREESWITCH_HOST=freeswitch
       - FREESWITCH_PORT=8021
       - FREESWITCH_PASSWORD=ClueCon
+      # Asterisk Configuration
+      - ASTERISK_HOST=asterisk
+      - ASTERISK_PORT=5038
+      - ASTERISK_USERNAME=admin
+      - ASTERISK_PASSWORD=admin
       - JWT_SECRET=e556e588ee21e16ed4485a2c94149363ec8c85c881801895ecce9d786d41084e445fca510a8cf7d6fe771e65d956e23d1e0b40b6b82029b1920bb034c17a5149
       - MAX_CONCURRENT_CALLS=10
       - CALLS_PER_MINUTE=30
       - LOG_LEVEL=info
       - MONITORING_ENABLED=true
       - CORS_ORIGIN=http://localhost:5173
-      - SIP_PROVIDER_HOST=sip.example.com
-      - SIP_PROVIDER_USERNAME=test_user
-      - SIP_PROVIDER_PASSWORD=test_password
-      - SIP_CALLER_ID_NUMBER=+70000000000
+      - SIP_PROVIDER_HOST=62.141.121.197
+      - SIP_PROVIDER_PORT=5070
+      - SIP_PROVIDER_USERNAME=
+      - SIP_PROVIDER_PASSWORD=
+      - SIP_CALLER_ID_NUMBER=${SIP_CALLER_ID_NUMBER:-+70000000000}
       # Настройки для загрузки файлов и таймаутов
       - REQUEST_TIMEOUT=120000
       - BODY_PARSER_LIMIT=50mb
@@ -158,6 +205,12 @@ volumes:
   freeswitch_logs:
     driver: local
   freeswitch_sounds:
+    driver: local
+  asterisk_logs:
+    driver: local
+  asterisk_lib:
+    driver: local
+  asterisk_spool:
     driver: local
 
 networks:

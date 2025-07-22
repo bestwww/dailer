@@ -422,10 +422,19 @@ export interface AppConfig {
   // Redis
   redisUrl: string;
   
+  // VoIP Provider
+  voipProvider: 'freeswitch' | 'asterisk';
+  
   // FreeSWITCH
   freeswitchHost: string;
   freeswitchPort: number;
   freeswitchPassword: string;
+  
+  // Asterisk
+  asteriskHost: string;
+  asteriskPort: number;
+  asteriskUsername: string;
+  asteriskPassword: string;
   
   // JWT
   jwtSecret: string;
