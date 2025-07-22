@@ -40,7 +40,7 @@ export default defineConfig({
     // Увеличиваем лимит предупреждения до 1000 kB
     chunkSizeWarningLimit: 1000,
     
-    // Минификация кода (упрощенная конфигурация для совместимости)
-    minify: 'terser'
+    // Минификация кода (используем встроенный esbuild вместо terser)
+    minify: 'esbuild'
   }
 })
