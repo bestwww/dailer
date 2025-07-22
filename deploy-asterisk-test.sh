@@ -29,10 +29,10 @@ info() {
 }
 
 # 🔧 Переменные
-REPO_URL="https://github.com/ваш-репозиторий/dialer-system.git"  # ЗАМЕНИТЕ на ваш репозиторий
+REPO_URL="https://github.com/bestwww/dailer.git"
 PROJECT_DIR="/opt/dialer"
 BACKUP_DIR="/opt/dialer-backup-$(date +%Y%m%d-%H%M%S)"
-CALLER_ID=${SIP_CALLER_ID_NUMBER:-"+7123456789"}
+CALLER_ID=${SIP_CALLER_ID_NUMBER:-"9058615815"}
 
 log "🚀 Начало деплоя Asterisk на тестовый сервер"
 log "📞 Caller ID: $CALLER_ID"
