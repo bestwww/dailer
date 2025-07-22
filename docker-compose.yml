@@ -72,7 +72,7 @@ services:
 
   # Asterisk (альтернативный VoIP сервер)
   asterisk:
-    build:
+    build: 
       context: ./docker/asterisk
       dockerfile: Dockerfile
     container_name: dialer_asterisk

@@ -1,0 +1,187 @@
+FROM ubuntu:22.04
+
+# Метаданные
+LABEL description="Official Asterisk 22.5.0 LTS from source"
+LABEL version="22.5.0"
+LABEL maintainer="Dialer Project"
+
+# Переменные окружения
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ASTERISK_VERSION=22.5.0
+ENV ASTERISK_USER=asterisk
+ENV ASTERISK_GROUP=asterisk
+
+# 📦 Установка зависимостей для сборки
+RUN echo "📦 Установка зависимостей..." && \
+    apt-get update && \
+    apt-get install -y \
+        # Основные инструменты сборки
+        build-essential \
+        wget \
+        curl \
+        git \
+        autoconf \
+        automake \
+        libtool \
+        pkg-config \
+        # Библиотеки разработки
+        libjansson-dev \
+        libxml2-dev \
+        libsqlite3-dev \
+        libssl-dev \
+        libedit-dev \
+        libedit2 \
+        libncurses5-dev \
+        # UUID и другие утилиты
+        uuid-dev \
+        libcap-dev \
+        libcurl4-openssl-dev \
+        # PJSIP зависимости
+        libnewt-dev \
+        libsrtp2-dev \
+        # Звуковые библиотеки
+        libgsm1-dev \
+        libspeex-dev \
+        libspeexdsp-dev \
+        libogg-dev \
+        libvorbis-dev \
+        libresample1-dev \
+        # Дополнительные зависимости
+        zlib1g-dev \
+        libffi-dev \
+        # Очистка кэша
+        && apt-get clean \
+        && rm -rf /var/lib/apt/lists/*
+
+# 👤 Создание пользователя asterisk
+RUN echo "👤 Создание пользователя..." && \
+    groupadd -r $ASTERISK_GROUP && \
+    useradd -r -g $ASTERISK_GROUP -d /var/lib/asterisk -s /bin/bash $ASTERISK_USER
+
+# 📥 Скачивание и извлечение официальных исходников Asterisk 22.5.0
+WORKDIR /usr/src
+RUN echo "📥 Скачивание ОФИЦИАЛЬНОГО Asterisk 22.5.0..." && \
+    wget -q https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-22-current.tar.gz && \
+    echo "📦 Извлечение архива..." && \
+    tar -xzf asterisk-22-current.tar.gz && \
+    rm asterisk-22-current.tar.gz && \
+    echo "📁 Поиск директории Asterisk..." && \
+    ASTERISK_DIR=$(find /usr/src -maxdepth 1 -type d -name "asterisk-*" | head -1) && \
+    echo "✅ Найдена директория: $ASTERISK_DIR" && \
+    ls -la $ASTERISK_DIR
+
+# 🔧 Конфигурация и сборка (правильный переход в директорию)
+RUN echo "🔧 Конфигурация Asterisk..." && \
+    ASTERISK_DIR=$(find /usr/src -maxdepth 1 -type d -name "asterisk-*" | head -1) && \
+    cd "$ASTERISK_DIR" && \
+    echo "📍 Текущая директория: $(pwd)" && \
+    echo "📋 Содержимое директории:" && \
+    ls -la | head -10 && \
+    echo "🔧 Запуск configure..." && \
+    ./configure \
+        --with-jansson-bundled \
+        --with-pjproject-bundled \
+        --disable-xmldoc \
+        --without-asound \
+        --without-oss \
+        --without-gtk2 \
+        --without-qt \
+        --without-radius \
+        --without-h323 \
+        --without-unixodbc \
+        --without-neon \
+        --without-neon29 \
+        --without-lua \
+        --without-tds \
+        --without-postgres \
+        --without-mysql \
+        --without-bfd \
+        --without-ldap \
+        --without-dahdi \
+        --without-pri \
+        --without-ss7 \
+        --without-spandsp \
+        --without-portaudio \
+        --without-jack && \
+    echo "🔧 Конфигурация завершена"
+
+# 🏗️ Компиляция (оптимизированная для Docker)
+RUN echo "🏗️ Компиляция Asterisk (используем все CPU)..." && \
+    ASTERISK_DIR=$(find /usr/src -maxdepth 1 -type d -name "asterisk-*" | head -1) && \
+    cd "$ASTERISK_DIR" && \
+    make -j$(nproc) && \
+    echo "✅ Компиляция завершена"
+
+# 📦 Установка
+RUN echo "📦 Установка Asterisk..." && \
+    ASTERISK_DIR=$(find /usr/src -maxdepth 1 -type d -name "asterisk-*" | head -1) && \
+    cd "$ASTERISK_DIR" && \
+    make install && \
+    make samples && \
+    make config && \
+    echo "✅ Asterisk установлен"
+
+# 🗂️ Создание необходимых директорий
+RUN echo "🗂️ Создание директорий..." && \
+    mkdir -p \
+        /etc/asterisk \
+        /var/lib/asterisk \
+        /var/log/asterisk \
+        /var/spool/asterisk \
+        /var/run/asterisk \
+        /usr/share/asterisk && \
+    echo "✅ Директории созданы"
+
+# 🔒 Настройка прав доступа
+RUN echo "🔒 Настройка прав..." && \
+    chown -R $ASTERISK_USER:$ASTERISK_GROUP \
+        /etc/asterisk \
+        /var/lib/asterisk \
+        /var/log/asterisk \
+        /var/spool/asterisk \
+        /var/run/asterisk \
+        /usr/share/asterisk && \
+    echo "✅ Права настроены"
+
+# 📋 Копирование нашей конфигурации
+COPY conf/ /etc/asterisk/
+
+# 🔒 Исправление прав на конфигурацию
+RUN chown -R $ASTERISK_USER:$ASTERISK_GROUP /etc/asterisk/
+
+# 📝 Очистка временных файлов сборки
+RUN echo "📝 Очистка..." && \
+    rm -rf /usr/src/asterisk-* && \
+    apt-get purge -y \
+        build-essential \
+        wget \
+        git \
+        autoconf \
+        automake \
+        libtool \
+        libjansson-dev \
+        libxml2-dev \
+        libsqlite3-dev \
+        libssl-dev \
+        libedit-dev \
+        libncurses5-dev \
+        uuid-dev \
+        libcap-dev \
+        libcurl4-openssl-dev && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    echo "✅ Очистка завершена"
+
+# 🚀 Переключение на пользователя asterisk
+USER $ASTERISK_USER
+WORKDIR /var/lib/asterisk
+
+# 🎯 Проверка версии
+RUN asterisk -V
+
+# 📡 Открытие портов
+EXPOSE 5060/udp 5060/tcp 5038/tcp 10000-20000/udp
+
+# 🎬 Команда запуска
+CMD ["asterisk", "-f", "-c", "-vvv"] 
