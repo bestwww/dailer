@@ -32,37 +32,20 @@ RUN apt-get update && \
         vim \
         nano \
         htop \
-        tree \
-        # Необходимые библиотеки для Asterisk
-        build-essential \
-        libxml2-dev \
-        libncurses5-dev \
-        uuid-dev \
-        libjansson-dev \
-        libsqlite3-dev \
-        libssl-dev \
-        # Аудио поддержка
-        libasound2-dev \
-        libspeex-dev \
-        libspeexdsp-dev \
-        # Codec поддержка
-        libopus-dev \
-        libvorbis-dev \
-        libmp3lame-dev && \
+        tree && \
     echo "✅ Базовые зависимости установлены"
 
-# 🎯 Установка Asterisk из официального репозитория
-RUN echo "📦 Установка Asterisk..." && \
-    # Добавляем официальный репозиторий Asterisk
-    wget -qO- http://deb.asterisk.org/asterisk-public.key | apt-key add - && \
-    echo "deb http://deb.asterisk.org/asterisk-20-lts $(lsb_release -sc) main" > /etc/apt/sources.list.d/asterisk.list && \
+# 🎯 Установка Asterisk из стандартных пакетов Ubuntu
+RUN echo "📦 Установка Asterisk из стандартных пакетов..." && \
     apt-get update && \
-    # Устанавливаем Asterisk с базовыми модулями
+    # Устанавливаем Asterisk из стандартных репозиториев Ubuntu
     apt-get install -y \
         asterisk \
         asterisk-modules \
+        asterisk-config \
         asterisk-core-sounds-en \
-        asterisk-core-sounds-ru && \
+        asterisk-mp3 \
+        asterisk-voicemail && \
     echo "✅ Asterisk установлен"
 
 # 🗂️ Создаем структуру директорий
