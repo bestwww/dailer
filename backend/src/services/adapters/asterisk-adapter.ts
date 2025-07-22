@@ -4,7 +4,7 @@
  */
 
 import { EventEmitter } from 'events';
-import * as AsteriskManager from 'asterisk-manager';
+import AsteriskManager from 'asterisk-manager';
 import { log } from '@/utils/logger';
 import { 
   VoIPProvider, 
