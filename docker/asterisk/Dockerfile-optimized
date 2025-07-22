@@ -135,8 +135,10 @@ RUN mkdir -p \
 COPY --from=builder /usr/sbin/asterisk /usr/sbin/asterisk
 COPY --from=builder /usr/lib/asterisk /usr/lib/asterisk
 COPY --from=builder /var/lib/asterisk /var/lib/asterisk
-COPY --from=builder /usr/share/asterisk /usr/share/asterisk
 COPY --from=builder /etc/asterisk /etc/asterisk
+
+# 📋 Условное копирование директорий (если они существуют)
+RUN mkdir -p /usr/share/asterisk /var/spool/asterisk /usr/share/man/man8
 
 # 📋 Копирование нашей конфигурации
 COPY conf/ /etc/asterisk/
