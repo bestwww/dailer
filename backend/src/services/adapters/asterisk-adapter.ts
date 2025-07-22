@@ -621,6 +621,11 @@ export class AsteriskAdapter extends EventEmitter implements VoIPProvider {
    * Планирование переподключения к AMI
    */
   private scheduleReconnect(): void {
+    // Предотвращаем memory leak - не переподключаемся если уже подключены
+    if (this.connected) {
+      return;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       log.error(`❌ AsteriskAdapter: Max reconnection attempts (${this.maxReconnectAttempts}) reached`);
       this.emit('error', new Error('Max AMI reconnection attempts reached'));
@@ -632,17 +637,25 @@ export class AsteriskAdapter extends EventEmitter implements VoIPProvider {
     }
 
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * this.reconnectAttempts; // Экспоненциальная задержка
+    const delay = Math.min(this.reconnectDelay * this.reconnectAttempts, 30000); // Максимум 30 сек
 
     log.info(`🔄 AsteriskAdapter: Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
 
     this.reconnectTimer = setTimeout(async () => {
+      // Двойная проверка что мы не подключены
+      if (this.connected) {
+        return;
+      }
+      
       try {
         log.info('🔄 AsteriskAdapter: Attempting to reconnect to AMI...');
         await this.connect();
       } catch (error) {
         log.warn('⚠️ AsteriskAdapter: Reconnection attempt failed:', error);
-        // scheduleReconnect будет вызван автоматически из connect()
+        // Только если не подключены - планируем следующую попытку
+        if (!this.connected) {
+          this.scheduleReconnect();
+        }
       }
     }, delay);
   }
