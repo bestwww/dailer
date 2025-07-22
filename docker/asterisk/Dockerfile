@@ -38,14 +38,12 @@ RUN apt-get update && \
 # 🎯 Установка Asterisk из стандартных пакетов Ubuntu
 RUN echo "📦 Установка Asterisk из стандартных пакетов..." && \
     apt-get update && \
-    # Устанавливаем Asterisk из стандартных репозиториев Ubuntu
+    # Устанавливаем только базовые пакеты Asterisk которые точно есть в Ubuntu 22.04
     apt-get install -y \
         asterisk \
         asterisk-modules \
         asterisk-config \
-        asterisk-core-sounds-en \
-        asterisk-mp3 \
-        asterisk-voicemail && \
+        asterisk-core-sounds-en && \
     echo "✅ Asterisk установлен"
 
 # 🗂️ Создаем структуру директорий
