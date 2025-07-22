@@ -77,6 +77,11 @@ services:
       dockerfile: Dockerfile
     container_name: dialer_asterisk
     restart: unless-stopped
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+      - SYS_PTRACE
     ports:
       - "5061:5060/udp"    # SIP (другой порт чтобы не конфликтовать)
       - "5061:5060/tcp"    # SIP TCP
@@ -98,7 +103,7 @@ services:
       - EXTERNAL_IP=${EXTERNAL_IP:-auto}
       - SIP_PROVIDER_HOST=62.141.121.197
       - SIP_PROVIDER_PORT=5070
-    command: ["asterisk", "-f", "-c"]
+    command: ["asterisk", "-f", "-c", "-U", "root", "-G", "root"]
     healthcheck:
       test: ["CMD", "asterisk", "-rx", "core show version"]
       interval: 30s
