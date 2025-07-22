@@ -22,9 +22,9 @@ RUN adduser -S nodeuser -u 1001
 # Установка рабочей директории
 WORKDIR /app
 
-# Копирование package.json и package-lock.json для оптимизации кэширования
-COPY backend/package.json ./
-COPY backend/package-lock.json* ./
+# Копирование package.json и package-lock.json для оптимизации кэширования  
+COPY package.json ./
+COPY package-lock.json* ./
 
 # === Стадия разработки ===
 FROM base AS development
@@ -32,11 +32,11 @@ FROM base AS development
 # Установка всех зависимостей (включая dev)
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Копирование исходного кода backend
-COPY backend/ .
+# Копирование исходного кода backend (мы уже в backend директории)
+COPY . .
 
-# Копирование папки с миграциями из корня проекта (сохраняем структуру папок)
-COPY database /database
+# Создание директории для миграций (database не доступна из build context)
+RUN mkdir -p /database
 
 # Создание папки для аудиофайлов с правильными правами
 RUN mkdir -p /app/audio && chown -R nodeuser:nodejs /app/audio && chmod 755 /app/audio
@@ -57,11 +57,11 @@ FROM base AS build
 # Установка всех зависимостей (включая dev для сборки)
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# Копирование исходного кода backend
-COPY backend/ .
+# Копирование исходного кода backend (мы уже в backend директории)
+COPY . .
 
-# Копирование папки с миграциями из корня проекта (сохраняем структуру папок)
-COPY database /database
+# Создание директории для миграций (database не доступна из build context)
+RUN mkdir -p /database
 
 # Сборка TypeScript приложения
 RUN npm run build
@@ -83,7 +83,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 
 # Копирование package.json для информации о версии
-COPY backend/package*.json ./
+COPY package*.json ./
 
 # Создание директорий для логов и аудио файлов
 RUN mkdir -p logs audio public \
