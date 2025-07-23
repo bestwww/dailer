@@ -85,8 +85,8 @@ COPY --from=build /app/dist ./dist
 # Копирование package.json для информации о версии
 COPY backend/package*.json ./
 
-# Создание директорий для логов и аудио файлов
-RUN mkdir -p logs audio public \
+# Создание директорий для логов и публичных файлов  
+RUN mkdir -p logs public \
     && chown -R nodeuser:nodejs /app
 
 # Переключение на непривилегированного пользователя
