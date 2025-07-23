@@ -5,7 +5,6 @@
 
 import { AsteriskAdapter } from '@/services/adapters/asterisk-adapter';
 import { config } from '@/config';
-import { log } from '@/utils/logger';
 
 async function testSIPTrunk() {
   console.log('📞 Тестирование SIP Trunk (62.141.121.197:5070)\n');
@@ -43,7 +42,8 @@ async function testSIPTrunk() {
         console.log('⚠️ SIP trunk может быть настроен неправильно');
       }
     } catch (error) {
-      console.log(`⚠️ Не удалось проверить SIP endpoint: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`⚠️ Не удалось проверить SIP endpoint: ${errorMessage}`);
     }
 
     // Проверка транспортов
@@ -56,7 +56,8 @@ async function testSIPTrunk() {
         console.log('✅ UDP транспорт слушает на 0.0.0.0:5060');
       }
     } catch (error) {
-      console.log(`⚠️ Не удалось проверить транспорты: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`⚠️ Не удалось проверить транспорты: ${errorMessage}`);
     }
 
     // Проверка что нет авторизации (для trunk без регистрации)
@@ -69,7 +70,8 @@ async function testSIPTrunk() {
         console.log('⚠️ Обнаружена авторизация для trunk (может быть лишней)');
       }
     } catch (error) {
-      console.log(`⚠️ Не удалось проверить авторизацию: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`⚠️ Не удалось проверить авторизацию: ${errorMessage}`);
     }
 
     // ОСТОРОЖНО: Тест звонка только с разрешения пользователя

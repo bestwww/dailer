@@ -21,7 +21,7 @@ import {
 export class FreeSwitchAdapter extends EventEmitter implements VoIPProvider {
   private initialized: boolean = false;
 
-  constructor(private config: { host: string; port: number; password: string }) {
+  constructor(private _config: { host: string; port: number; password: string }) {
     super();
     this.setupEventHandlers();
   }

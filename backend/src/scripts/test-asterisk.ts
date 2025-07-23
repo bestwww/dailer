@@ -5,7 +5,6 @@
 
 import { AsteriskAdapter } from '@/services/adapters/asterisk-adapter';
 import { config } from '@/config';
-import { log } from '@/utils/logger';
 
 async function testAsteriskAdapter() {
   console.log('🧪 Тестирование Asterisk адаптера\n');
@@ -61,7 +60,8 @@ async function testAsteriskAdapter() {
       await adapter.connect();
       console.log('✅ Подключение к Asterisk AMI успешно\n');
     } catch (error) {
-      console.log(`❌ Подключение к Asterisk AMI не удалось: ${error.message}\n`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`❌ Подключение к Asterisk AMI не удалось: ${errorMessage}\n`);
       console.log('💡 Убедитесь что:');
       console.log('   - Asterisk запущен и доступен');
       console.log('   - AMI включен в manager.conf');
@@ -84,7 +84,8 @@ async function testAsteriskAdapter() {
       console.log(`   Время работы: ${stats.uptime}s`);
       console.log(`   Подключен: ${stats.connected ? '✅' : '❌'}\n`);
     } catch (error) {
-      console.log(`⚠️ Не удалось получить статистику: ${error.message}\n`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`⚠️ Не удалось получить статистику: ${errorMessage}\n`);
     }
 
     // Тест 4: Отправка команды
@@ -98,7 +99,8 @@ async function testAsteriskAdapter() {
       }
       console.log('');
     } catch (error) {
-      console.log(`⚠️ Не удалось выполнить команду: ${error.message}\n`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`⚠️ Не удалось выполнить команду: ${errorMessage}\n`);
     }
 
     // Тест 5: Тестовый звонок (только если есть SIP trunk)
@@ -122,12 +124,14 @@ async function testAsteriskAdapter() {
           await adapter.hangupCall(callUuid);
           console.log(`   ✅ Тестовый звонок завершен: ${callUuid}`);
         } catch (hangupError) {
-          console.log(`   ⚠️ Ошибка завершения звонка: ${hangupError.message}`);
+          const errorMessage = hangupError instanceof Error ? hangupError.message : String(hangupError);
+          console.log(`   ⚠️ Ошибка завершения звонка: ${errorMessage}`);
         }
       }, 2000);
       
     } catch (callError) {
-      console.log(`   ⚠️ Ожидаемая ошибка звонка: ${callError.message}`);
+      const errorMessage = callError instanceof Error ? callError.message : String(callError);
+      console.log(`   ⚠️ Ожидаемая ошибка звонка: ${errorMessage}`);
       console.log('   💡 Это нормально если SIP trunk не настроен');
     }
 

@@ -10,6 +10,13 @@ export class ContactModel extends BaseModel {
   private tableName = 'contacts';
 
   /**
+   * Публичный метод для выполнения произвольных SQL запросов
+   */
+  async executeQuery<T = any>(text: string, params?: any[]): Promise<any> {
+    return await this.query<T>(text, params);
+  }
+
+  /**
    * Создание нового контакта
    */
   async createContact(data: CreateContactRequest): Promise<Contact> {

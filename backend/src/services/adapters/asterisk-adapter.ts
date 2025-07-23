@@ -14,7 +14,6 @@ import {
   VoIPCallAnsweredEvent,
   VoIPCallHangupEvent,
   VoIPCallDTMFEvent,
-  VoIPCallAMDEvent,
   VoIPLeadCreatedEvent
 } from '../voip-provider';
 
@@ -248,7 +247,7 @@ export class AsteriskAdapter extends EventEmitter implements VoIPProvider {
         Cause: 16 // Normal Clearing
       };
 
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve, _reject) => {
         const timeout = setTimeout(() => {
           log.warn(`⚠️ AsteriskAdapter: Hangup timeout for ${callUuid}, continuing...`);
           resolve(); // Не считаем timeout критической ошибкой
@@ -285,12 +284,17 @@ export class AsteriskAdapter extends EventEmitter implements VoIPProvider {
    * Получение статуса подключения
    */
   getConnectionStatus(): VoIPConnectionStatus {
-    return {
+    const status: VoIPConnectionStatus = {
       connected: this.connected,
       reconnectAttempts: this.reconnectAttempts,
       maxReconnectAttempts: this.maxReconnectAttempts,
-      lastError: this.connected ? undefined : 'AsteriskAdapter not implemented yet',
     };
+    
+    if (!this.connected) {
+      status.lastError = 'AsteriskAdapter not implemented yet';
+    }
+    
+    return status;
   }
 
   /**
@@ -511,7 +515,7 @@ export class AsteriskAdapter extends EventEmitter implements VoIPProvider {
     const voipEvent: VoIPCallCreatedEvent = {
       callUuid: event.uniqueid,
       phoneNumber: event.calleridnum || 'unknown',
-      callerIdNumber: event.calleridnum,
+      callerIdNumber: event.calleridnum || undefined,
       timestamp: new Date(),
     };
 

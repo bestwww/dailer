@@ -123,9 +123,10 @@ export class VoIPProviderFactory {
     try {
       log.info(`🧪 VoIPProviderFactory: Testing ${providerType} provider`);
       
+      const baseConfig = VoIPProviderFactory.buildConfigFromEnv();
       const testConfig: VoIPConfig = {
+        ...baseConfig,
         provider: providerType,
-        ...VoIPProviderFactory.buildConfigFromEnv()
       };
       
       const provider = VoIPProviderFactory.create(testConfig);

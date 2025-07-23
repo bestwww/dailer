@@ -431,7 +431,10 @@ export class DialerService extends EventEmitter {
 
     } catch (error) {
       log.error(`❌ ERROR in makeCall for ${contact.phoneNumber} (contact ID: ${contact.id}):`, error);
-      log.error(`❌ Error type: ${error.constructor.name}, message: ${error.message}`);
+      const errorInfo = error instanceof Error ? 
+        `Error type: ${error.constructor.name}, message: ${error.message}` : 
+        `Unknown error: ${String(error)}`;
+      log.error(`❌ ${errorInfo}`);
       
       try {
         // Обновление статуса контакта при ошибке
@@ -1093,7 +1096,7 @@ export class DialerService extends EventEmitter {
         RETURNING id, phone, status;
       `;
       
-      const result = await contactModel.query<any>(stuckContactsQuery, [campaignId]);
+      const result = await contactModel.executeQuery<any>(stuckContactsQuery, [campaignId]);
       
       if (result.rowCount && result.rowCount > 0) {
         log.info(`🔄 Reset ${result.rowCount} stuck contacts for campaign ${campaignId}`);

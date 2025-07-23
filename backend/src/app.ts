@@ -444,7 +444,7 @@ async function startServer(): Promise<void> {
     });
 
     process.on('unhandledRejection', async (reason, promise) => {
-      log.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      log.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
       await shutdownLogger(); // Закрываем логгер gracefully
       process.exit(1);
     });
