@@ -499,7 +499,10 @@ async function startServer(): Promise<void> {
 
 // Запуск если файл выполняется напрямую
 if (require.main === module) {
-  startServer();
+  startServer().catch((error) => {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  });
 }
 
 export { createApp, initializeServer, startServer }; 
