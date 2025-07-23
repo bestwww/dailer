@@ -1100,7 +1100,7 @@ export class DialerService extends EventEmitter {
       
       if (result.rowCount && result.rowCount > 0) {
         log.info(`🔄 Reset ${result.rowCount} stuck contacts for campaign ${campaignId}`);
-        result.rows.forEach(contact => {
+        result.rows.forEach((contact: any) => {
           log.info(`📞 Reset contact: ${contact.phone} (ID: ${contact.id}) → ${contact.status}`);
         });
       }

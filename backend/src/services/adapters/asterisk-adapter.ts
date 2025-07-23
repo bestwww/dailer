@@ -515,9 +515,13 @@ export class AsteriskAdapter extends EventEmitter implements VoIPProvider {
     const voipEvent: VoIPCallCreatedEvent = {
       callUuid: event.uniqueid,
       phoneNumber: event.calleridnum || 'unknown',
-      callerIdNumber: event.calleridnum || undefined,
       timestamp: new Date(),
     };
+    
+    // Добавляем callerIdNumber только если оно есть
+    if (event.calleridnum) {
+      voipEvent.callerIdNumber = event.calleridnum;
+    }
 
     log.debug('📞 AsteriskAdapter: Call created', voipEvent);
     this.emit('call:created', voipEvent);
