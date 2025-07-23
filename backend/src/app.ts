@@ -429,6 +429,11 @@ async function startServer(): Promise<void> {
   try {
     const { server, io: _io } = await initializeServer();
 
+    // Настройка таймаутов для загрузки больших файлов
+    server.timeout = config.uploadTimeout || 600000; // 10 минут
+    server.keepAliveTimeout = 65000; // 65 секунд
+    server.headersTimeout = 66000; // 66 секунд (больше чем keepAliveTimeout)
+
     // Запуск сервера
     server.listen(config.port, () => {
       log.info(`🌟 Server running on port ${config.port}`);

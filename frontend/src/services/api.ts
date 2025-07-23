@@ -307,13 +307,19 @@ class ApiService {
   }
 
   // Загрузка аудиофайла для кампании
-  async uploadCampaignAudio(campaignId: number, file: File): Promise<Campaign> {
+  async uploadCampaignAudio(campaignId: number, file: File, retryCount = 0): Promise<Campaign> {
+    const maxRetries = 3
+    const retryDelay = 2000 // 2 секунды
+    
     console.log('🔍 DEBUG: Загрузка аудиофайла для кампании')
     console.log('🆔 ID кампании:', campaignId)
     console.log('📁 Файл:', file)
     console.log('📂 Имя файла:', file.name)
     console.log('📊 Размер файла:', file.size)
     console.log('🎵 Тип файла:', file.type)
+    if (retryCount > 0) {
+      console.log(`🔄 Попытка ${retryCount + 1} из ${maxRetries + 1}`)
+    }
     
     const formData = new FormData()
     formData.append('audio', file)
@@ -325,7 +331,7 @@ class ApiService {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 120000, // 2 минуты таймаут для загрузки файлов
+        timeout: 300000, // 5 минут таймаут для загрузки файлов
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
@@ -351,6 +357,21 @@ class ApiService {
     } catch (error: any) {
       console.error('❌ Ошибка загрузки аудиофайла:', error)
       
+      // Проверяем, можно ли повторить попытку
+      const isRetryableError = (
+        error.code === 'ECONNABORTED' || // Таймаут
+        error.code === 'NETWORK_ERROR' ||
+        error.code === 'ECONNRESET' ||
+        (error.response && error.response.status >= 500) || // Ошибки сервера
+        (!error.response && error.request) // Нет ответа
+      )
+      
+      if (isRetryableError && retryCount < maxRetries) {
+        console.log(`🔄 Повторная попытка через ${retryDelay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, retryDelay))
+        return this.uploadCampaignAudio(campaignId, file, retryCount + 1)
+      }
+      
       if (error.response) {
         // Сервер ответил с кодом ошибки
         console.error('❌ Статус ответа:', error.response.status)
@@ -367,7 +388,10 @@ class ApiService {
         console.error('❌ Запрос отправлен, но ответа нет:', error.request)
         console.error('❌ URL запроса:', error.config?.url)
         console.error('❌ Таймаут:', error.config?.timeout)
-        throw new Error('Сервер не отвечает. Проверьте подключение к серверу.')
+        const message = retryCount >= maxRetries 
+          ? `Не удалось загрузить файл после ${maxRetries + 1} попыток. Проверьте подключение к интернету.`
+          : 'Сервер не отвечает. Проверьте подключение к серверу.'
+        throw new Error(message)
         
       } else {
         // Ошибка при настройке запроса
